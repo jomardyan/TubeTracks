@@ -434,6 +434,150 @@ def run_preflight_checks(url: Optional[str], output_dir: str, quiet: bool = Fals
     return results
 
 
+def _parse_rate_limit(rate_str: str) -> Optional[int]:
+    """
+    Parse rate limit string to bytes per second.
+    
+    Args:
+        rate_str: Rate limit string (e.g., '1M', '500K', '1000')
+        
+    Returns:
+        int: Bytes per second, or None if invalid
+    """
+    if not rate_str:
+        return None
+    
+    rate_str = rate_str.strip().upper()
+    
+    multipliers = {
+        'K': 1024,
+        'M': 1024 * 1024,
+        'G': 1024 * 1024 * 1024,
+    }
+    
+    try:
+        if rate_str[-1] in multipliers:
+            return int(float(rate_str[:-1]) * multipliers[rate_str[-1]])
+        return int(rate_str)
+    except (ValueError, IndexError):
+        return None
+
+
+def dry_run_info(
+    url: str,
+    output_dir: str,
+    filename_template: str,
+    audio_format: str,
+    quality: str,
+    is_playlist: bool = False
+) -> Optional[Dict[str, Any]]:
+    """
+    Preview what would be downloaded without actually downloading.
+    
+    Args:
+        url: YouTube URL
+        output_dir: Output directory
+        filename_template: Filename template
+        audio_format: Audio format
+        quality: Quality preset
+        is_playlist: Whether to treat as playlist
+        
+    Returns:
+        dict with video info and resolved paths, or None on error
+    """
+    ydl_opts = {
+        'quiet': True,
+        'no_warnings': True,
+        'noplaylist': not is_playlist,
+    }
+    
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            
+            results = []
+            entries = info.get('entries', [info]) if 'entries' in info else [info]
+            
+            for entry in entries:
+                if not entry:
+                    continue
+                
+                # Resolve filename
+                title = entry.get('title', 'Unknown')
+                safe_title = sanitize_filename(title)
+                
+                # Build resolved path
+                template_vars = {
+                    'title': safe_title,
+                    'id': entry.get('id', 'unknown'),
+                    'ext': audio_format,
+                    'uploader': sanitize_filename(entry.get('uploader', 'Unknown')),
+                    'upload_date': entry.get('upload_date', 'unknown'),
+                    'artist': sanitize_filename(entry.get('artist', entry.get('uploader', 'Unknown'))),
+                }
+                
+                # Simple template resolution
+                resolved_name = filename_template
+                for key, value in template_vars.items():
+                    resolved_name = resolved_name.replace(f'%({key})s', str(value))
+                
+                resolved_path = Path(output_dir) / resolved_name
+                
+                results.append({
+                    'title': title,
+                    'id': entry.get('id'),
+                    'duration': entry.get('duration'),
+                    'uploader': entry.get('uploader'),
+                    'resolved_path': str(resolved_path),
+                    'url': entry.get('webpage_url', url),
+                })
+            
+            return {
+                'playlist_title': info.get('title') if 'entries' in info else None,
+                'video_count': len(results),
+                'videos': results,
+                'quality': quality,
+                'format': audio_format,
+                'output_dir': output_dir,
+            }
+    
+    except Exception as e:
+        console.print(f"[red]Error extracting info:[/red] {e}")
+        return None
+
+
+def print_dry_run_info(info: Dict[str, Any]):
+    """Print dry run information in a formatted table"""
+    console.print("\n[bold cyan]═══ Dry Run Preview ═══[/bold cyan]\n")
+    
+    if info.get('playlist_title'):
+        console.print(f"[bold]Playlist:[/bold] {info['playlist_title']}")
+    
+    console.print(f"[bold]Videos:[/bold] {info['video_count']}")
+    console.print(f"[bold]Quality:[/bold] {info['quality']}")
+    console.print(f"[bold]Format:[/bold] {info['format']}")
+    console.print(f"[bold]Output:[/bold] {info['output_dir']}\n")
+    
+    table = Table(title="Files to Download", show_header=True, header_style="bold cyan")
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Title", max_width=40)
+    table.add_column("Duration", justify="right")
+    table.add_column("Output Path", max_width=50)
+    
+    for idx, video in enumerate(info['videos'], 1):
+        duration = video.get('duration')
+        duration_str = f"{duration // 60}:{duration % 60:02d}" if duration else "N/A"
+        table.add_row(
+            str(idx),
+            video['title'][:40] + ('...' if len(video['title']) > 40 else ''),
+            duration_str,
+            video['resolved_path']
+        )
+    
+    console.print(table)
+    console.print("\n[dim]No files were downloaded (dry run mode)[/dim]\n")
+
+
 # Quality presets
 QUALITY_PRESETS = {
     'low': '128',
@@ -725,7 +869,12 @@ def download_from_batch_file(
     quiet: bool = False,
     max_retries: int = 3,
     fail_fast: bool = False,
-    max_failures: int = 0
+    max_failures: int = 0,
+    archive_file: Optional[str] = None,
+    proxy: Optional[str] = None,
+    rate_limit: Optional[str] = None,
+    cookies_file: Optional[str] = None,
+    log_file: Optional[str] = None,
 ) -> tuple[List[DownloadResult], int]:
     """
     Download audio from multiple URLs in a batch file with detailed reporting.
@@ -742,6 +891,11 @@ def download_from_batch_file(
         max_retries: Max retries per download
         fail_fast: Stop on first failure
         max_failures: Stop after this many failures (0 = no limit)
+        archive_file: Path to archive file for tracking downloads
+        proxy: Proxy URL
+        rate_limit: Download rate limit
+        cookies_file: Path to cookies file
+        log_file: Path to log file
         
     Returns:
         tuple: (list of DownloadResult, exit_code)
@@ -776,6 +930,11 @@ def download_from_batch_file(
         console.print(f"\n[bold cyan]═══ Batch Download Mode ═══[/bold cyan]")
         console.print(f"Found [bold]{len(urls)}[/bold] URL(s) to process\n")
     
+    # Setup logging if specified
+    if log_file:
+        setup_logging(log_file, quiet)
+        logging.info(f"Starting batch download: {len(urls)} URLs")
+    
     failure_count = 0
     
     for idx, url in enumerate(urls, 1):
@@ -791,9 +950,17 @@ def download_from_batch_file(
             embed_thumbnail=embed_thumbnail,
             filename_template=filename_template,
             quiet=quiet,
-            max_retries=max_retries
+            max_retries=max_retries,
+            archive_file=archive_file,
+            proxy=proxy,
+            rate_limit=rate_limit,
+            cookies_file=cookies_file,
         )
         results.append(result)
+        
+        # Log result
+        if log_file:
+            log_download_result(result)
         
         if not result.success:
             failure_count += 1
@@ -881,11 +1048,14 @@ def _print_batch_summary(results: List[DownloadResult], all_urls: List[str]):
 
 
 def main():
-    """Main entry point"""
+    \"\"\"Main entry point\"\"\"
+    # Load config file defaults
+    config = load_config()
+    
     parser = argparse.ArgumentParser(
-        description='Enhanced YouTube to MP3 Downloader with rich error handling',
+        description='Enhanced YouTube to MP3 Downloader with config, archive, and network options',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=\"\"\"
 Examples:
   # Download single video with default settings
   python youtube_mp3_downloader.py https://www.youtube.com/watch?v=dQw4w9WgXcQ
@@ -896,21 +1066,27 @@ Examples:
   # Download entire playlist
   python youtube_mp3_downloader.py -p https://www.youtube.com/playlist?list=PLAYLIST_ID
   
-  # Download from batch file with retries
-  python youtube_mp3_downloader.py -b urls.txt -o ./music -q best --retries 5
+  # Download from batch file with retries and logging
+  python youtube_mp3_downloader.py -b urls.txt -o ./music -q best --retries 5 --log-file download.log
   
-  # Custom output directory and filename
-  python youtube_mp3_downloader.py -o ./music -t "%(artist)s - %(title)s" URL
+  # Dry run to preview files
+  python youtube_mp3_downloader.py --dry-run https://www.youtube.com/watch?v=VIDEO_ID
   
-  # Skip validation checks
-  python youtube_mp3_downloader.py --skip-checks URL
+  # Use proxy and rate limiting
+  python youtube_mp3_downloader.py --proxy socks5://127.0.0.1:1080 --limit-rate 1M URL
+  
+  # Save current settings to config file
+  python youtube_mp3_downloader.py --save-config
+  
+  # Skip archive (re-download even if already done)
+  python youtube_mp3_downloader.py --no-archive URL
 
 Exit Codes:
   0 - All downloads successful
   1 - Some downloads failed (partial success)
   2 - Validation/preflight error
   3 - All downloads failed
-        """
+        \"\"\"
     )
     
     # Positional argument (optional if using batch file)
@@ -924,28 +1100,28 @@ Exit Codes:
     parser.add_argument(
         '-q', '--quality',
         choices=['low', 'medium', 'high', 'best'],
-        default='medium',
-        help='Audio quality preset (default: medium)'
+        default=config.quality,
+        help=f'Audio quality preset (default: {config.quality})'
     )
     
     parser.add_argument(
         '-f', '--format',
         choices=SUPPORTED_FORMATS,
-        default='mp3',
-        help='Output audio format (default: mp3)'
+        default=config.format,
+        help=f'Output audio format (default: {config.format})'
     )
     
     # Output options
     parser.add_argument(
         '-o', '--output',
-        default='./downloads',
-        help='Output directory (default: ./downloads)'
+        default=config.output,
+        help=f'Output directory (default: {config.output})'
     )
     
     parser.add_argument(
         '-t', '--template',
-        default='%(title)s.%(ext)s',
-        help='Filename template (default: %%(title)s.%%(ext)s)'
+        default=config.template,
+        help=f'Filename template (default: {config.template})'
     )
     
     # Playlist and batch options
@@ -964,12 +1140,14 @@ Exit Codes:
     parser.add_argument(
         '--no-metadata',
         action='store_true',
+        default=not config.embed_metadata,
         help='Do not embed metadata'
     )
     
     parser.add_argument(
         '--no-thumbnail',
         action='store_true',
+        default=not config.embed_thumbnail,
         help='Do not embed thumbnail as album art'
     )
     
@@ -977,8 +1155,8 @@ Exit Codes:
     parser.add_argument(
         '--retries',
         type=int,
-        default=3,
-        help='Max retry attempts for network errors (default: 3)'
+        default=config.retries,
+        help=f'Max retry attempts for network errors (default: {config.retries})'
     )
     
     parser.add_argument(
@@ -1000,6 +1178,65 @@ Exit Codes:
         help='Skip preflight validation checks'
     )
     
+    # Archive options
+    parser.add_argument(
+        '--archive',
+        default=config.archive_file or str(DEFAULT_ARCHIVE_FILE),
+        help=f'Archive file to track downloaded videos (default: {DEFAULT_ARCHIVE_FILE})'
+    )
+    
+    parser.add_argument(
+        '--no-archive',
+        action='store_true',
+        help='Disable archive (re-download even if previously downloaded)'
+    )
+    
+    # Network options
+    parser.add_argument(
+        '--proxy',
+        default=config.proxy,
+        help='Proxy URL (e.g., socks5://127.0.0.1:1080, http://user:pass@host:port)'
+    )
+    
+    parser.add_argument(
+        '--limit-rate',
+        default=config.rate_limit,
+        help='Download rate limit (e.g., 1M, 500K)'
+    )
+    
+    parser.add_argument(
+        '--cookies',
+        default=config.cookies_file,
+        help='Path to cookies file for authentication (Netscape format)'
+    )
+    
+    # Logging options
+    parser.add_argument(
+        '--log-file',
+        default=config.log_file,
+        help='Log file path for detailed logging'
+    )
+    
+    # Dry run
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Preview what would be downloaded without downloading'
+    )
+    
+    # Config management
+    parser.add_argument(
+        '--save-config',
+        action='store_true',
+        help='Save current settings to config file'
+    )
+    
+    parser.add_argument(
+        '--show-config',
+        action='store_true',
+        help='Show current configuration and exit'
+    )
+    
     # Other options
     parser.add_argument(
         '--quiet',
@@ -1007,19 +1244,99 @@ Exit Codes:
         help='Suppress output messages'
     )
     
+    parser.add_argument(
+        '--version',
+        action='version',
+        version=f'%(prog)s {__version__}'
+    )
+    
     args = parser.parse_args()
+    
+    # Handle --show-config
+    if args.show_config:
+        console.print(\"\\n[bold cyan]Current Configuration:[/bold cyan]\\n\")
+        table = Table(show_header=True, header_style=\"bold cyan\")
+        table.add_column(\"Setting\")
+        table.add_column(\"Value\")
+        table.add_row(\"Quality\", args.quality)
+        table.add_row(\"Format\", args.format)
+        table.add_row(\"Output\", args.output)
+        table.add_row(\"Template\", args.template)
+        table.add_row(\"Retries\", str(args.retries))
+        table.add_row(\"Archive\", args.archive if not args.no_archive else \"(disabled)\")
+        table.add_row(\"Proxy\", args.proxy or \"(none)\")
+        table.add_row(\"Rate Limit\", args.limit_rate or \"(none)\")
+        table.add_row(\"Cookies\", args.cookies or \"(none)\")
+        table.add_row(\"Log File\", args.log_file or \"(none)\")
+        console.print(table)
+        console.print()
+        sys.exit(EXIT_SUCCESS)
+    
+    # Handle --save-config
+    if args.save_config:
+        new_config = Config(
+            quality=args.quality,
+            format=args.format,
+            output=args.output,
+            template=args.template,
+            embed_metadata=not args.no_metadata,
+            embed_thumbnail=not args.no_thumbnail,
+            retries=args.retries,
+            archive_file=args.archive if not args.no_archive else None,
+            use_archive=not args.no_archive,
+            proxy=args.proxy,
+            rate_limit=args.limit_rate,
+            cookies_file=args.cookies,
+            log_file=args.log_file,
+        )
+        config_path = CONFIG_LOCATIONS[0]  # Save to home directory
+        new_config.save_to_file(config_path)
+        console.print(f\"[green]\u2713[/green] Configuration saved to: {config_path}\")
+        sys.exit(EXIT_SUCCESS)
     
     # Validate input
     if not args.url and not args.batch_file:
         parser.print_help()
-        console.print("\n[bold red]Error:[/bold red] You must provide either a URL or a batch file (-b)")
+        console.print(\"\\n[bold red]Error:[/bold red] You must provide either a URL or a batch file (-b)\")
         sys.exit(EXIT_VALIDATION_ERROR)
+    
+    # Setup logging
+    if args.log_file:
+        setup_logging(args.log_file, args.quiet)
     
     # Show banner
     if not args.quiet:
-        console.print("\n[bold cyan]═══════════════════════════════════════════[/bold cyan]")
-        console.print("[bold cyan]   YouTube MP3 Downloader - Enhanced   [/bold cyan]")
-        console.print("[bold cyan]═══════════════════════════════════════════[/bold cyan]\n")
+        console.print(\"\\n[bold cyan]\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550[/bold cyan]\")
+        console.print(f\"[bold cyan]   YouTube MP3 Downloader v{__version__}   [/bold cyan]\")
+        console.print(\"[bold cyan]\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550[/bold cyan]\\n\")
+    
+    # Handle dry run
+    if args.dry_run:
+        if args.batch_file:
+            console.print(\"[yellow]Note:[/yellow] Dry run shows info for first URL in batch file\")
+            try:
+                with open(args.batch_file, 'r') as f:
+                    urls = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+                if urls:
+                    args.url = urls[0]
+                else:
+                    console.print(\"[red]No URLs found in batch file[/red]\")
+                    sys.exit(EXIT_VALIDATION_ERROR)
+            except FileNotFoundError:
+                console.print(f\"[red]Batch file not found: {args.batch_file}[/red]\")
+                sys.exit(EXIT_VALIDATION_ERROR)
+        
+        info = dry_run_info(
+            url=args.url,
+            output_dir=args.output,
+            filename_template=args.template,
+            audio_format=args.format,
+            quality=args.quality,
+            is_playlist=args.playlist
+        )
+        if info:
+            print_dry_run_info(info)
+        sys.exit(EXIT_SUCCESS if info else EXIT_VALIDATION_ERROR)
     
     # Run preflight checks
     if not args.skip_checks:
@@ -1033,15 +1350,18 @@ Exit Codes:
         critical_checks = ['FFmpeg', 'Output Directory']
         for check_name, passed, message in checks:
             if check_name in critical_checks and not passed:
-                console.print(f"[bold red]Cannot proceed:[/bold red] {message}")
+                console.print(f\"[bold red]Cannot proceed:[/bold red] {message}\")
                 sys.exit(EXIT_VALIDATION_ERROR)
         
         # URL validation (non-critical for batch mode)
         if args.url and not args.batch_file:
             for check_name, passed, message in checks:
                 if check_name == 'URL Format' and not passed:
-                    console.print(f"[bold red]Cannot proceed:[/bold red] {message}")
+                    console.print(f\"[bold red]Cannot proceed:[/bold red] {message}\")
                     sys.exit(EXIT_VALIDATION_ERROR)
+    
+    # Determine archive file
+    archive_file = args.archive if not args.no_archive else None
     
     # Handle batch file
     if args.batch_file:
@@ -1056,7 +1376,12 @@ Exit Codes:
             quiet=args.quiet,
             max_retries=args.retries,
             fail_fast=args.fail_fast,
-            max_failures=args.max_failures
+            max_failures=args.max_failures,
+            archive_file=archive_file,
+            proxy=args.proxy,
+            rate_limit=args.limit_rate,
+            cookies_file=args.cookies,
+            log_file=args.log_file,
         )
         sys.exit(exit_code)
     
@@ -1071,8 +1396,16 @@ Exit Codes:
         filename_template=args.template,
         quiet=args.quiet,
         is_playlist=args.playlist,
-        max_retries=args.retries
+        max_retries=args.retries,
+        archive_file=archive_file,
+        proxy=args.proxy,
+        rate_limit=args.limit_rate,
+        cookies_file=args.cookies,
     )
+    
+    # Log result
+    if args.log_file:
+        log_download_result(result)
     
     sys.exit(EXIT_SUCCESS if result.success else EXIT_ALL_FAILED)
 
