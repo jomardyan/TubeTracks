@@ -3,10 +3,11 @@ YouTube converter plugin - wrapper around yt-dlp's native YouTube support.
 """
 
 import re
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 import yt_dlp
 
-from .base import BaseConverter, PluginCapabilities, ContentType, ExtractorType
+from .base import BaseConverter, ContentType, ExtractorType, PluginCapabilities
 
 
 class YouTubeConverter(BaseConverter):
@@ -90,8 +91,8 @@ class YouTubeConverter(BaseConverter):
     ) -> Tuple[bool, Optional[str], Optional[str]]:
         """Download and convert YouTube content"""
         try:
-            from pathlib import Path
             import time
+            from pathlib import Path
             
             Path(output_path).mkdir(parents=True, exist_ok=True)
             

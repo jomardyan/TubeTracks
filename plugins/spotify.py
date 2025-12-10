@@ -5,10 +5,11 @@ This plugin provides metadata extraction and playlist compilation support.
 """
 
 import re
-from typing import Dict, Tuple, Any, Optional
+from typing import Any, Dict, Optional, Tuple
+
 import yt_dlp
 
-from .base import BaseConverter, PluginCapabilities, ContentType, ExtractorType
+from .base import BaseConverter, ContentType, ExtractorType, PluginCapabilities
 
 
 class SpotifyConverter(BaseConverter):

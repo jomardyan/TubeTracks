@@ -7,26 +7,17 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from downloader import (
-    Config,
-    ErrorCode,
-    DownloadResult,
-    validate_url,
-    check_ffmpeg,
-    check_output_dir,
-    sanitize_filename,
-    _parse_rate_limit,
-    load_config,
-    QUALITY_PRESETS,
-    SUPPORTED_FORMATS,
-)
+from downloader import (QUALITY_PRESETS, SUPPORTED_FORMATS, Config,
+                        DownloadResult, ErrorCode, _parse_rate_limit,
+                        check_ffmpeg, check_output_dir, load_config,
+                        sanitize_filename, validate_url)
 
 
 class TestURLValidation:

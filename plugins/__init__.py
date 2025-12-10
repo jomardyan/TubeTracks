@@ -5,25 +5,18 @@ Provides a registry-based plugin architecture for extending the downloader
 with support for multiple platforms beyond YouTube.
 """
 
-from .base import (
-    BaseConverter,
-    ContentType,
-    ExtractorType,
-    PluginCapabilities,
-    PluginRegistry,
-    get_global_registry,
-    reset_global_registry,
-)
-
-from .youtube import YouTubeConverter
-from .tiktok import TikTokConverter
+from .base import (BaseConverter, ContentType, ExtractorType,
+                   PluginCapabilities, PluginRegistry, get_global_registry,
+                   reset_global_registry)
+from .dailymotion import DailymotionConverter
 from .instagram import InstagramConverter
+from .reddit import RedditConverter
 from .soundcloud import SoundCloudConverter
 from .spotify import SpotifyConverter
+from .tiktok import TikTokConverter
 from .twitch import TwitchConverter
-from .dailymotion import DailymotionConverter
 from .vimeo import VimeoConverter
-from .reddit import RedditConverter
+from .youtube import YouTubeConverter
 
 
 def register_default_plugins():

@@ -6,6 +6,8 @@ Features: Rich error handling, retries, validation, config file, archive, and de
 Plugin system for multi-platform support (YouTube, TikTok, Instagram, Spotify, SoundCloud, etc.)
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import logging
@@ -15,32 +17,23 @@ import shutil
 import sys
 import time
 from configparser import ConfigParser, RawConfigParser
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 import yt_dlp
-from yt_dlp.utils import DownloadError, ExtractorError, PostProcessingError
 from rich.console import Console
 from rich.panel import Panel
+from rich.progress import (BarColumn, DownloadColumn, Progress, TextColumn,
+                           TimeRemainingColumn, TransferSpeedColumn)
 from rich.table import Table
-from rich.progress import (
-    Progress,
-    BarColumn,
-    TextColumn,
-    TimeRemainingColumn,
-    DownloadColumn,
-    TransferSpeedColumn,
-)
+from yt_dlp.utils import DownloadError, ExtractorError, PostProcessingError
 
 # Import plugin system
 try:
-    from plugins import (
-        get_global_registry,
-        ContentType,
-        BaseConverter,
-    )
+    from plugins import BaseConverter, ContentType, get_global_registry
     PLUGINS_AVAILABLE = True
 except ImportError:
     PLUGINS_AVAILABLE = False

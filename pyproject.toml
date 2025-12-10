@@ -48,6 +48,7 @@ Issues = "https://github.com/jomardyan/AudioDownload-YT/issues"
 
 [tool.setuptools]
 py-modules = ["downloader"]
+packages = ["plugins"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

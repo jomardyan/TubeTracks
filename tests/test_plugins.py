@@ -5,7 +5,7 @@ Tests for the plugin system and platform converters
 import os
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,25 +14,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import plugins module - this will auto-register all plugins
 import plugins
-from plugins import (
-    BaseConverter,
-    PluginCapabilities,
-    PluginRegistry,
-    ContentType,
-    ExtractorType,
-    get_global_registry,
-    reset_global_registry,
-    register_default_plugins,
-    YouTubeConverter,
-    TikTokConverter,
-    InstagramConverter,
-    SoundCloudConverter,
-    SpotifyConverter,
-    TwitchConverter,
-    DailymotionConverter,
-    VimeoConverter,
-    RedditConverter,
-)
+from plugins import (BaseConverter, ContentType, DailymotionConverter,
+                     ExtractorType, InstagramConverter, PluginCapabilities,
+                     PluginRegistry, RedditConverter, SoundCloudConverter,
+                     SpotifyConverter, TikTokConverter, TwitchConverter,
+                     VimeoConverter, YouTubeConverter, get_global_registry,
+                     register_default_plugins, reset_global_registry)
 
 # Ensure plugins are registered
 register_default_plugins()
@@ -552,7 +539,7 @@ class TestPluginIntegration:
     def test_validate_url_with_plugins(self):
         """Test that validate_url works with plugin system"""
         from downloader import validate_url
-        
+
         # YouTube URL
         valid, msg = validate_url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
         assert valid is True

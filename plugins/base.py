@@ -8,8 +8,8 @@ the downloader with support for multiple platforms beyond YouTube.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Any
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class ContentType(Enum):
