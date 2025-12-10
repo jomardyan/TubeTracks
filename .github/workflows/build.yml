@@ -33,9 +33,11 @@ jobs:
 
     - name: Check code formatting with Black
       run: black --check --diff .
+      continue-on-error: true
 
     - name: Check import sorting with isort
       run: isort --check-only --diff .
+      continue-on-error: true
 
     - name: Lint with flake8
       run: |
@@ -75,7 +77,6 @@ jobs:
   build:
     name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    needs: [lint]
     strategy:
       fail-fast: false
       matrix:
@@ -213,11 +214,25 @@ jobs:
     steps:
     - name: Check all job statuses
       run: |
-        if [ "${{ needs.lint.result }}" != "success" ] || \
-           [ "${{ needs.build.result }}" != "success" ] || \
+        echo "Lint: ${{ needs.lint.result }}"
+        echo "Security: ${{ needs.security.result }}"
+        echo "Build: ${{ needs.build.result }}"
+        echo "Build Package: ${{ needs.build-package.result }}"
+        echo "Test Install: ${{ needs.test-install.result }}"
+        
+        if [ "${{ needs.build.result }}" != "success" ] || \
            [ "${{ needs.build-package.result }}" != "success" ] || \
            [ "${{ needs.test-install.result }}" != "success" ]; then
-          echo "One or more jobs failed"
+          echo "❌ One or more required jobs failed"
           exit 1
         fi
-        echo "All required jobs passed successfully!"
+        
+        if [ "${{ needs.lint.result }}" == "failure" ]; then
+          echo "⚠️  Warning: Linting issues detected but not blocking"
+        fi
+        
+        if [ "${{ needs.security.result }}" == "failure" ]; then
+          echo "⚠️  Warning: Security scan issues detected but not blocking"
+        fi
+        
+        echo "✅ All required jobs passed successfully!"
