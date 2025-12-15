@@ -895,8 +895,8 @@ class DownloadProgress:
         progress_callback: Optional["ProgressCallback"] = None,
         cancel_event: Optional["CancelEvent"] = None,
     ):
-        self.progress = None
-        self.task = None
+        self.progress: Optional[Progress] = None
+        self.task: Optional[Any] = None
         self.current_file = ""
         self.current_stage = "initializing"
         self.quiet = quiet
@@ -916,7 +916,7 @@ class DownloadProgress:
         if d["status"] == "downloading":
             self.current_stage = "downloading"
             if not self.progress and not self.quiet:
-                self.progress = Progress(
+                progress = Progress(
                     TextColumn("[bold blue]{task.description}"),
                     BarColumn(),
                     DownloadColumn(),
@@ -924,10 +924,11 @@ class DownloadProgress:
                     TimeRemainingColumn(),
                     console=console,
                 )
-                self.progress.start()
-                self.task = self.progress.add_task(
+                progress.start()
+                self.task = progress.add_task(
                     f"[cyan]⬇ Downloading audio stream...", total=100
                 )
+                self.progress = progress
 
             if self.progress and ("total_bytes" in d or "total_bytes_estimate" in d):
                 total = d.get("total_bytes") or d.get("total_bytes_estimate", 0)
