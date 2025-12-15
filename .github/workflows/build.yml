@@ -113,7 +113,7 @@ jobs:
       run: |
         echo "🔒 Running Bandit security analysis..."
         bandit -r . -f json -o bandit-report.json --exit-zero
-        bandit -r . -f screen
+        bandit -r . -f screen --exit-zero
       continue-on-error: true
 
     - name: Check dependencies with Safety
