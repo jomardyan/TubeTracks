@@ -44,21 +44,43 @@ class App:
         # File menu
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Open URLs from file...", command=self._open_urls_file, accelerator="Ctrl+O")
-        file_menu.add_command(label="Save Log...", command=self._save_log, accelerator="Ctrl+S")
+        file_menu.add_command(
+            label="Open URLs from file...",
+            command=self._open_urls_file,
+            accelerator="Ctrl+O",
+        )
+        file_menu.add_command(
+            label="Save Log...", command=self._save_log, accelerator="Ctrl+S"
+        )
         file_menu.add_separator()
         file_menu.add_command(label="Clear URLs", command=self._clear_urls)
         file_menu.add_command(label="Clear Log", command=self._clear_log)
         file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self._exit_app, accelerator="Alt+F4")
+        file_menu.add_command(
+            label="Exit", command=self._exit_app, accelerator="Alt+F4"
+        )
 
         # Edit menu
         edit_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Edit", menu=edit_menu)
-        edit_menu.add_command(label="Cut", command=lambda: self._edit_command("cut"), accelerator="Ctrl+X")
-        edit_menu.add_command(label="Copy", command=lambda: self._edit_command("copy"), accelerator="Ctrl+C")
-        edit_menu.add_command(label="Paste", command=lambda: self._edit_command("paste"), accelerator="Ctrl+V")
-        edit_menu.add_command(label="Select All", command=lambda: self._edit_command("select_all"), accelerator="Ctrl+A")
+        edit_menu.add_command(
+            label="Cut", command=lambda: self._edit_command("cut"), accelerator="Ctrl+X"
+        )
+        edit_menu.add_command(
+            label="Copy",
+            command=lambda: self._edit_command("copy"),
+            accelerator="Ctrl+C",
+        )
+        edit_menu.add_command(
+            label="Paste",
+            command=lambda: self._edit_command("paste"),
+            accelerator="Ctrl+V",
+        )
+        edit_menu.add_command(
+            label="Select All",
+            command=lambda: self._edit_command("select_all"),
+            accelerator="Ctrl+A",
+        )
 
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -73,18 +95,30 @@ class App:
     def _create_context_menu(self, widget: tk.Text) -> tk.Menu:
         """Create a context menu for text widgets with cut/copy/paste."""
         menu = tk.Menu(widget, tearoff=0)
-        menu.add_command(label="Cut", command=lambda: self._text_cut(widget), accelerator="Ctrl+X")
-        menu.add_command(label="Copy", command=lambda: self._text_copy(widget), accelerator="Ctrl+C")
-        menu.add_command(label="Paste", command=lambda: self._text_paste(widget), accelerator="Ctrl+V")
+        menu.add_command(
+            label="Cut", command=lambda: self._text_cut(widget), accelerator="Ctrl+X"
+        )
+        menu.add_command(
+            label="Copy", command=lambda: self._text_copy(widget), accelerator="Ctrl+C"
+        )
+        menu.add_command(
+            label="Paste",
+            command=lambda: self._text_paste(widget),
+            accelerator="Ctrl+V",
+        )
         menu.add_separator()
-        menu.add_command(label="Select All", command=lambda: self._text_select_all(widget), accelerator="Ctrl+A")
-        
+        menu.add_command(
+            label="Select All",
+            command=lambda: self._text_select_all(widget),
+            accelerator="Ctrl+A",
+        )
+
         def show_menu(event):
             try:
                 menu.tk_popup(event.x_root, event.y_root)
             finally:
                 menu.grab_release()
-        
+
         widget.bind("<Button-3>", show_menu)
         return menu
 
@@ -133,7 +167,7 @@ class App:
         """Open a text file containing URLs."""
         filename = filedialog.askopenfilename(
             title="Open URLs file",
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
         )
         if filename:
             try:
@@ -150,7 +184,7 @@ class App:
         filename = filedialog.asksaveasfilename(
             title="Save log",
             defaultextension=".txt",
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
         )
         if filename:
             try:
@@ -180,7 +214,7 @@ class App:
             f"YouTube MP3 Downloader (GUI)\n"
             f"Version {downloader.__version__}\n\n"
             f"A multi-platform audio downloader with plugin support.\n"
-            f"Supports YouTube, Spotify, SoundCloud, and more."
+            f"Supports YouTube, Spotify, SoundCloud, and more.",
         )
 
     def _exit_app(self) -> None:
@@ -220,16 +254,32 @@ class App:
         self.output_var = tk.StringVar(value=str(Path.cwd() / "downloads"))
         self.output_entry = ttk.Entry(options, textvariable=self.output_var)
         self.output_entry.grid(row=0, column=1, sticky="ew", padx=(8, 8))
-        ttk.Button(options, text="Browse…", command=self._choose_output).grid(row=0, column=2, sticky="w")
+        ttk.Button(options, text="Browse…", command=self._choose_output).grid(
+            row=0, column=2, sticky="w"
+        )
 
-        ttk.Label(options, text="Quality").grid(row=0, column=3, sticky="w", padx=(14, 0))
+        ttk.Label(options, text="Quality").grid(
+            row=0, column=3, sticky="w", padx=(14, 0)
+        )
         self.quality_var = tk.StringVar(value="medium")
-        self.quality_combo = ttk.Combobox(options, textvariable=self.quality_var, values=["low", "medium", "high", "best"], width=10, state="readonly")
+        self.quality_combo = ttk.Combobox(
+            options,
+            textvariable=self.quality_var,
+            values=["low", "medium", "high", "best"],
+            width=10,
+            state="readonly",
+        )
         self.quality_combo.grid(row=0, column=4, sticky="w", padx=(8, 8))
 
         ttk.Label(options, text="Format").grid(row=0, column=5, sticky="w")
         self.format_var = tk.StringVar(value="mp3")
-        self.format_combo = ttk.Combobox(options, textvariable=self.format_var, values=list(downloader.SUPPORTED_FORMATS), width=10, state="readonly")
+        self.format_combo = ttk.Combobox(
+            options,
+            textvariable=self.format_var,
+            values=list(downloader.SUPPORTED_FORMATS),
+            width=10,
+            state="readonly",
+        )
         self.format_combo.grid(row=0, column=6, sticky="w", padx=(8, 0))
 
         # Secondary options
@@ -240,38 +290,62 @@ class App:
         options2.columnconfigure(11, weight=1)
 
         self.playlist_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(options2, text="Treat as playlist", variable=self.playlist_var).grid(row=0, column=0, sticky="w")
+        ttk.Checkbutton(
+            options2, text="Treat as playlist", variable=self.playlist_var
+        ).grid(row=0, column=0, sticky="w")
 
         self.metadata_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(options2, text="Embed metadata", variable=self.metadata_var).grid(row=0, column=1, sticky="w", padx=(14, 0))
+        ttk.Checkbutton(
+            options2, text="Embed metadata", variable=self.metadata_var
+        ).grid(row=0, column=1, sticky="w", padx=(14, 0))
 
         self.thumbnail_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(options2, text="Embed thumbnail", variable=self.thumbnail_var).grid(row=0, column=2, sticky="w", padx=(14, 0))
+        ttk.Checkbutton(
+            options2, text="Embed thumbnail", variable=self.thumbnail_var
+        ).grid(row=0, column=2, sticky="w", padx=(14, 0))
 
         self.skip_existing_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(options2, text="Skip existing", variable=self.skip_existing_var).grid(row=0, column=3, sticky="w", padx=(14, 0))
+        ttk.Checkbutton(
+            options2, text="Skip existing", variable=self.skip_existing_var
+        ).grid(row=0, column=3, sticky="w", padx=(14, 0))
 
-        ttk.Label(options2, text="Concurrent").grid(row=0, column=4, sticky="w", padx=(14, 0))
+        ttk.Label(options2, text="Concurrent").grid(
+            row=0, column=4, sticky="w", padx=(14, 0)
+        )
         self.concurrent_var = tk.IntVar(value=3)
-        self.concurrent_spin = ttk.Spinbox(options2, from_=1, to=5, textvariable=self.concurrent_var, width=5)
+        self.concurrent_spin = ttk.Spinbox(
+            options2, from_=1, to=5, textvariable=self.concurrent_var, width=5
+        )
         self.concurrent_spin.grid(row=0, column=5, sticky="w", padx=(8, 0))
 
-        ttk.Label(options2, text="Retries").grid(row=0, column=6, sticky="w", padx=(14, 0))
+        ttk.Label(options2, text="Retries").grid(
+            row=0, column=6, sticky="w", padx=(14, 0)
+        )
         self.retries_var = tk.IntVar(value=3)
-        self.retries_spin = ttk.Spinbox(options2, from_=0, to=20, textvariable=self.retries_var, width=5)
+        self.retries_spin = ttk.Spinbox(
+            options2, from_=0, to=20, textvariable=self.retries_var, width=5
+        )
         self.retries_spin.grid(row=0, column=7, sticky="w", padx=(8, 0))
 
         self.use_archive_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(options2, text="Use archive", variable=self.use_archive_var).grid(row=0, column=8, sticky="w", padx=(14, 0))
+        ttk.Checkbutton(
+            options2, text="Use archive", variable=self.use_archive_var
+        ).grid(row=0, column=8, sticky="w", padx=(14, 0))
 
-        ttk.Label(options2, text="Archive file").grid(row=0, column=9, sticky="w", padx=(14, 0))
+        ttk.Label(options2, text="Archive file").grid(
+            row=0, column=9, sticky="w", padx=(14, 0)
+        )
         self.archive_var = tk.StringVar(value=str(downloader.DEFAULT_ARCHIVE_FILE))
-        self.archive_entry = ttk.Entry(options2, textvariable=self.archive_var, width=22)
+        self.archive_entry = ttk.Entry(
+            options2, textvariable=self.archive_var, width=22
+        )
         self.archive_entry.grid(row=0, column=10, sticky="w", padx=(8, 8))
 
         ttk.Label(options2, text="Template").grid(row=0, column=11, sticky="w")
         self.template_var = tk.StringVar(value="%(title)s.%(ext)s")
-        self.template_entry = ttk.Entry(options2, textvariable=self.template_var, width=20)
+        self.template_entry = ttk.Entry(
+            options2, textvariable=self.template_var, width=20
+        )
         self.template_entry.grid(row=0, column=12, sticky="w", padx=(8, 0))
 
         # Log area
@@ -284,7 +358,9 @@ class App:
 
         self.log_text = tk.Text(log_frame, height=12, wrap="word", state="disabled")
         self.log_text.grid(row=0, column=0, sticky="nsew")
-        scroll = ttk.Scrollbar(log_frame, orient="vertical", command=self.log_text.yview)
+        scroll = ttk.Scrollbar(
+            log_frame, orient="vertical", command=self.log_text.yview
+        )
         scroll.grid(row=0, column=1, sticky="ns")
         self.log_text.configure(yscrollcommand=scroll.set)
         self._create_context_menu(self.log_text)
@@ -295,7 +371,9 @@ class App:
         bottom.columnconfigure(0, weight=1)
 
         self.status_var = tk.StringVar(value="Idle")
-        ttk.Label(bottom, textvariable=self.status_var).grid(row=0, column=0, sticky="w")
+        ttk.Label(bottom, textvariable=self.status_var).grid(
+            row=0, column=0, sticky="w"
+        )
 
         self.progress = ttk.Progressbar(bottom, mode="determinate", maximum=100)
         self.progress.grid(row=1, column=0, sticky="ew", pady=(6, 0))
@@ -306,7 +384,9 @@ class App:
         self.start_btn = ttk.Button(controls, text="Start", command=self._start)
         self.start_btn.grid(row=0, column=0, padx=(0, 8))
 
-        self.cancel_btn = ttk.Button(controls, text="Cancel", command=self._cancel, state="disabled")
+        self.cancel_btn = ttk.Button(
+            controls, text="Cancel", command=self._cancel, state="disabled"
+        )
         self.cancel_btn.grid(row=0, column=1)
 
     def _choose_output(self) -> None:
@@ -324,7 +404,7 @@ class App:
         """Enable or disable controls based on running state."""
         state_normal = "normal" if not running else "disabled"
         state_readonly = "readonly" if not running else "disabled"
-        
+
         self.start_btn.configure(state="disabled" if running else "normal")
         self.cancel_btn.configure(state="normal" if running else "disabled")
         self.urls_text.configure(state=state_normal)
@@ -341,14 +421,20 @@ class App:
             messagebox.showerror("Missing URLs", "Please paste at least one URL.")
             return None
 
-        urls = [u.strip() for u in urls_raw.splitlines() if u.strip() and not u.strip().startswith("#")]
+        urls = [
+            u.strip()
+            for u in urls_raw.splitlines()
+            if u.strip() and not u.strip().startswith("#")
+        ]
         if not urls:
             messagebox.showerror("Missing URLs", "No valid URLs found.")
             return None
 
         output_dir = self.output_var.get().strip()
         if not output_dir:
-            messagebox.showerror("Missing output folder", "Please choose an output folder.")
+            messagebox.showerror(
+                "Missing output folder", "Please choose an output folder."
+            )
             return None
 
         # GUI-friendly checks (no Rich output)
@@ -390,7 +476,9 @@ class App:
         self._append_log(f"Starting batch: {len(urls)} URL(s)")
 
         self._set_running(True)
-        self._worker = threading.Thread(target=self._run_worker, args=(urls,), daemon=True)
+        self._worker = threading.Thread(
+            target=self._run_worker, args=(urls,), daemon=True
+        )
         self._worker.start()
 
     def _cancel(self) -> None:
@@ -422,10 +510,19 @@ class App:
         def progress_callback(payload: Dict[str, Any]) -> None:
             # payload comes from worker thread
             self._queue.put({"type": "progress", "payload": payload})
-        
-        def playlist_progress_callback(current: int, total_items: int, title: str) -> None:
+
+        def playlist_progress_callback(
+            current: int, total_items: int, title: str
+        ) -> None:
             # Playlist-specific progress
-            self._queue.put({"type": "playlist_progress", "current": current, "total": total_items, "title": title})
+            self._queue.put(
+                {
+                    "type": "playlist_progress",
+                    "current": current,
+                    "total": total_items,
+                    "title": title,
+                }
+            )
 
         for idx, url in enumerate(urls, 1):
             if self._cancel_event.is_set():
@@ -455,7 +552,14 @@ class App:
             )
 
             completed += 1
-            self._queue.put({"type": "result", "result": result, "completed": completed, "total": total})
+            self._queue.put(
+                {
+                    "type": "result",
+                    "result": result,
+                    "completed": completed,
+                    "total": total,
+                }
+            )
 
             if result.error_code == downloader.ErrorCode.CANCELLED:
                 self._queue.put({"type": "cancelled"})
@@ -485,7 +589,7 @@ class App:
 
         elif mtype == "progress":
             self._handle_progress(msg.get("payload") or {})
-        
+
         elif mtype == "playlist_progress":
             self._handle_playlist_progress(msg)
 
@@ -502,7 +606,7 @@ class App:
         """Handle progress update messages."""
         status = payload.get("status")
         stage = payload.get("stage", "")
-        
+
         # Handle playlist_progress separately
         if status == "playlist_progress":
             current = payload.get("current", 0)
@@ -511,16 +615,18 @@ class App:
             skipped = payload.get("skipped", 0)
             failed = payload.get("failed", 0)
             title = payload.get("title", "")
-            
-            self.status_var.set(f"📋 Playlist: {current}/{total} (✓{successful} ⊘{skipped} ✗{failed})")
+
+            self.status_var.set(
+                f"📋 Playlist: {current}/{total} (✓{successful} ⊘{skipped} ✗{failed})"
+            )
             if title:
                 self._append_log(f"[{current}/{total}] {title}")
-            
+
             pct = (current / max(1, total)) * 100.0
             self.progress.configure(mode="determinate")
             self.progress["value"] = pct
             return
-        
+
         # Update status text based on stage
         stage_messages = {
             "extracting": "⚙ Extracting video information...",
@@ -530,10 +636,10 @@ class App:
             "metadata": "📝 Embedding metadata...",
             "thumbnail": "🖼 Embedding thumbnail...",
         }
-        
+
         if stage in stage_messages:
             self.status_var.set(stage_messages[stage])
-        
+
         if status == "downloading":
             total = payload.get("total_bytes")
             downloaded = payload.get("downloaded_bytes")
@@ -559,17 +665,17 @@ class App:
 
         elif status == "error":
             self.progress.stop()
-    
+
     def _handle_playlist_progress(self, msg: Dict[str, Any]) -> None:
         """Handle playlist-specific progress updates."""
         current = msg.get("current", 0)
         total = msg.get("total", 1)
         title = msg.get("title", "")
-        
+
         self.status_var.set(f"📋 Playlist: {current}/{total}")
         if title:
             self._append_log(f"  [{current}/{total}] {title}")
-        
+
         pct = (current / max(1, total)) * 100.0
         self.progress.configure(mode="determinate")
         self.progress["value"] = pct
