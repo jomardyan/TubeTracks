@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tubetracks"
-version = "1.5.0"
+version = "1.5.1"
 description = "TubeTracks: Enhanced YouTube to MP3 Downloader with multi-platform support"
 readme = "README.md"
 authors = [
