@@ -2,6 +2,8 @@
 
 <div align="center">
 
+[![PyPI version](https://img.shields.io/pypi/v/tubetracks.svg)](https://pypi.org/project/tubetracks/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/tubetracks.svg)](https://pypi.org/project/tubetracks/)
 ![Build and Test](https://github.com/jomardyan/TubeTracks/actions/workflows/build.yml/badge.svg)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
@@ -32,7 +34,7 @@ TubeTracks is a Python-based media downloader supporting 9+ platforms including 
 
 - Python 3.8+
 - FFmpeg
-- Dependencies listed in [requirements.txt](requirements.txt)
+- Dependencies listed in [requirements.txt](https://github.com/jomardyan/TubeTracks/blob/main/requirements.txt)
 
 ---
 
@@ -119,7 +121,7 @@ from downloader import download_audio
 result = download_audio("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 ```
 
-See [LIBRARY_USAGE.md](LIBRARY_USAGE.md) for complete API documentation and examples.
+See [LIBRARY_USAGE.md](https://github.com/jomardyan/TubeTracks/blob/main/LIBRARY_USAGE.md) for complete API documentation and examples.
 
 ### GUI
 
@@ -208,7 +210,7 @@ Configuration files are loaded from:
 
 View all plugins: `python downloader.py --list-plugins`
 
-See [PLUGIN_API.md](PLUGIN_API.md) for custom plugin development.
+See [PLUGIN_API.md](https://github.com/jomardyan/TubeTracks/blob/main/PLUGIN_API.md) for custom plugin development.
 
 ---
 
@@ -244,11 +246,11 @@ By using this software, you acknowledge that:
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 or later — see LICENSE file for details.
+This project is licensed under the GNU General Public License v3.0 or later — see [LICENSE](https://github.com/jomardyan/TubeTracks/blob/main/LICENSE) file for details.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+Contributions are welcome! Please feel free to submit [issues](https://github.com/jomardyan/TubeTracks/issues) and [pull requests](https://github.com/jomardyan/TubeTracks/pulls).
 
 ## Acknowledgments
 
