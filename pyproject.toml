@@ -7,8 +7,6 @@ name = "tubetracks"
 version = "1.5.0"
 description = "TubeTracks: Enhanced YouTube to MP3 Downloader with multi-platform support"
 readme = "README.md"
-license = "GPL-3.0-or-later"
-license-files = ["LICENSE"]
 authors = [
     {name = "TubeTracks", email = "hayk.jomardyan@outlook.com"}
 ]
@@ -35,6 +33,7 @@ classifiers = [
     "Environment :: Console",
     "Environment :: X11 :: Tk",
     "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Operating System :: POSIX :: Linux",
