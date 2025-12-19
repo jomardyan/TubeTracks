@@ -199,3 +199,5 @@ When making code changes, update existing documentation inline via docstrings an
 **Change concurrent downloads**: Modify `ThreadPoolExecutor(max_workers=...)` in `_download_playlist()`
 
 **Update version**: Edit `__version__` in [downloader.py](../downloader.py) and `version` in [pyproject.toml](../pyproject.toml)
+
+Avoid using emojis.

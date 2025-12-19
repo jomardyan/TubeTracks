@@ -1,15 +1,7 @@
 name: Build and Test
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'LICENSE'
-  pull_request:
-    branches: [ main, develop ]
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger only
   schedule:
     - cron: '0 0 * * 0'  # Weekly run every Sunday at midnight UTC
 

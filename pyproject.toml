@@ -8,6 +8,7 @@ version = "1.0.0"
 description = "Enhanced YouTube to MP3 Downloader with multi-platform support, config, archive, and network options"
 readme = "README.md"
 license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 authors = [
     {name = "YouTube MP3 Downloader", email = "hayk.jomardyan@outlook.com"}
 ]
