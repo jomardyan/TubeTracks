@@ -720,6 +720,23 @@ jobs:
         
         echo "tubetracks command working"
         echo ""
+
+        echo "Testing audiodownload command..."
+        audiodownload --help || {
+          echo "audiodownload command failed"
+          echo ""
+          echo "Checking if command exists:"
+          which audiodownload || echo "Command not found in PATH"
+          exit 1
+        }
+
+        audiodownload --version || {
+          echo "audiodownload --version failed"
+          exit 1
+        }
+
+        echo "audiodownload command working"
+        echo ""
         
         echo "Testing ytdl alias..."
         ytdl --help || {
