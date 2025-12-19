@@ -60,6 +60,11 @@ make install
    ```
 
 3. **Install FFmpeg**
+   You can use the provided cross-platform PowerShell script:
+   ```powershell
+   pwsh ./install_ffmpeg.ps1
+   ```
+   Or install manually:
    - **Windows**: `winget install Gyan.FFmpeg`
    - **macOS**: `brew install ffmpeg`
    - **Linux**: `sudo apt-get install ffmpeg`
