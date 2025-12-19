@@ -1,260 +1,464 @@
-# TubeTracks
+# 🎵 TubeTracks
 
 <div align="center">
 
 [![PyPI version](https://img.shields.io/pypi/v/tubetracks.svg)](https://pypi.org/project/tubetracks/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/tubetracks.svg)](https://pypi.org/project/tubetracks/)
-![Build and Test](https://github.com/jomardyan/TubeTracks/actions/workflows/build.yml/badge.svg)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Build Status](https://github.com/jomardyan/TubeTracks/actions/workflows/build.yml/badge.svg)](https://github.com/jomardyan/TubeTracks/actions)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-**Multi-platform media downloader with advanced quality control and batch processing capabilities.**
+**Professional multi-platform media downloader with advanced quality control and batch processing**
+
+Download audio from YouTube, Spotify, SoundCloud, and 6+ other platforms with enterprise-grade features and an intuitive interface.
+
+[Installation](#-installation) •
+[Quick Start](#-quick-start) •
+[Features](#-features) •
+[Documentation](#-documentation) •
+[Contributing](#-contributing)
 
 </div>
 
 ---
 
-## Overview
+## ✨ Features
 
-TubeTracks is a Python-based media downloader supporting 9+ platforms including YouTube, TikTok, Instagram, SoundCloud, Spotify, and more. Features include multiple quality presets, format conversion, playlist support, and both CLI and GUI interfaces.
+### Core Capabilities
 
-## Features
+- 🌐 **Multi-Platform Support** — YouTube, TikTok, Instagram, SoundCloud, Spotify, Twitch, Dailymotion, Vimeo, Reddit
+- 🎚️ **Quality Control** — 4 preset levels (128kbps - 320kbps) plus original quality
+- 🔄 **Format Conversion** — MP3, M4A, FLAC, WAV, OGG via FFmpeg
+- 📋 **Batch Processing** — Process multiple URLs with concurrent downloads (1-5 threads)
+- 🎨 **Dual Interface** — Professional CLI and intuitive GUI (Tkinter)
+- 💾 **Smart Caching** — Archive system prevents duplicate downloads
+- 🔐 **Network Features** — Proxy support, rate limiting, cookie-based authentication
+- 🏷️ **Rich Metadata** — Automatic ID3 tags and embedded artwork
+- 🔌 **Plugin Architecture** — Extensible system for adding platforms
+- ⚡ **Performance** — Concurrent downloads, retry logic, error recovery
 
-- **Multi-platform support**: YouTube, TikTok, Instagram, SoundCloud, Spotify, Twitch, Dailymotion, Vimeo, Reddit
-- **Quality presets**: 128 kbps, 192 kbps, 320 kbps, or original quality
-- **Format conversion**: MP3, M4A, FLAC, WAV, OGG via FFmpeg
-- **Batch processing**: Download multiple URLs from text files
-- **Playlist support**: Automatic playlist extraction and download
-- **GUI interface**: User-friendly desktop application with Tkinter
-- **Download archive**: Track downloads to prevent duplicates
-- **Metadata embedding**: Automatic ID3 tags and thumbnail artwork
+### Advanced Features
 
-## Requirements
-
-- Python 3.8+
-- FFmpeg
-- Dependencies listed in [requirements.txt](https://github.com/jomardyan/TubeTracks/blob/main/requirements.txt)
+- **Configuration Management** — INI-based config files with precedence system
+- **Comprehensive Logging** — Detailed logs with configurable verbosity
+- **Progress Tracking** — Real-time progress bars and status updates
+- **Dry Run Mode** — Preview downloads without actual processing
+- **Template System** — Customizable filename templates
+- **Error Handling** — Intelligent retry with exponential backoff
+- **Cross-Platform** — Windows, macOS, Linux support
 
 ---
 
-## Installation
+## 📋 Requirements
 
-### Install from PyPI
+- **Python** 3.8 or higher
+- **FFmpeg** (latest stable version)
+- **Dependencies** — Automatically installed via pip
+  - `yt-dlp >= 2024.0.0`
+  - `rich >= 13.0.0`
+
+---
+
+## 🚀 Installation
+
+### Method 1: PyPI (Recommended)
+
+Install the latest stable release from PyPI:
 
 ```bash
 pip install tubetracks
 ```
 
-### Quick Install (Source)
+### Method 2: From Source
+
+For development or latest features:
 
 ```bash
+# Clone the repository
 git clone https://github.com/jomardyan/TubeTracks.git
 cd TubeTracks
+
+# Install with make (recommended)
 make install
+
+# Or install manually
+pip install -r requirements.txt
 ```
 
-### Manual Installation
+### FFmpeg Installation
 
-1. **Clone repository**
-   ```bash
-   git clone https://github.com/jomardyan/TubeTracks.git
-   cd TubeTracks
-   ```
+TubeTracks requires FFmpeg for audio conversion:
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+**Automated Installation (PowerShell - all platforms):**
+```powershell
+pwsh ./install_ffmpeg.ps1
+```
 
-3. **Install FFmpeg**
-   You can use the provided cross-platform PowerShell script:
-   ```powershell
-   pwsh ./install_ffmpeg.ps1
-   ```
-   Or install manually:
-   - **Windows**: `winget install Gyan.FFmpeg`
-   - **macOS**: `brew install ffmpeg`
-   - **Linux**: `sudo apt-get install ffmpeg`
+**Platform-Specific:**
+
+<details>
+<summary><b>Windows</b></summary>
+
+```powershell
+# Using winget (Windows 10+)
+winget install Gyan.FFmpeg
+
+# Using chocolatey
+choco install ffmpeg
+```
+</details>
+
+<details>
+<summary><b>macOS</b></summary>
+
+```bash
+# Using Homebrew
+brew install ffmpeg
+```
+</details>
+
+<details>
+<summary><b>Linux</b></summary>
+
+```bash
+# Debian/Ubuntu
+sudo apt update && sudo apt install ffmpeg
+
+# Fedora
+sudo dnf install ffmpeg
+
+# Arch Linux
+sudo pacman -S ffmpeg
+```
+</details>
 
 ### Verify Installation
 
 ```bash
-python --version          # Check Python
-ffmpeg -version          # Check FFmpeg
-python downloader.py --help  # Test downloader
+python --version    # Should be 3.8+
+ffmpeg -version     # Verify FFmpeg is installed
+tubetracks --version  # Test TubeTracks installation
 ```
 
 ---
 
-## Quick Start
+## 🎯 Quick Start
 
-### CLI Usage
+### Command Line Interface
 
-**Note:** If you installed via PyPI, use the `tubetracks` command instead of `python downloader.py`.
+**Basic Usage:**
 
 ```bash
-# Single download (PyPI)
+# Download single video (PyPI installation)
 tubetracks "https://www.youtube.com/watch?v=VIDEO_ID"
 
-# Single download (Source)
+# Download single video (from source)
 python downloader.py "https://www.youtube.com/watch?v=VIDEO_ID"
 
-# With quality and format
-tubetracks -q high -f flac "URL"
+# High quality FLAC
+tubetracks -q high -f flac "VIDEO_URL"
 
-# Playlist
+# Download entire playlist
 tubetracks -p "PLAYLIST_URL"
 
-# Batch from file
-tubetracks -b urls.txt
+# Batch download from file
+tubetracks -b urls.txt -o ./music
 ```
 
-### Python Library Usage
-
-TubeTracks can be used as a Python library to integrate media downloading capabilities directly into your own applications.
-
-```python
-from downloader import download_audio
-
-# Simple download
-result = download_audio("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-```
-
-See [LIBRARY_USAGE.md](https://github.com/jomardyan/TubeTracks/blob/main/LIBRARY_USAGE.md) for complete API documentation and examples.
-
-### GUI
-
-Launch the desktop interface:
+**Advanced Usage:**
 
 ```bash
+# Custom output directory and filename template
+tubetracks -o ~/Music -t "%(artist)s - %(title)s" "URL"
+
+# Use proxy with rate limiting
+tubetracks --proxy socks5://127.0.0.1:1080 --limit-rate 1M "URL"
+
+# Preview without downloading
+tubetracks --dry-run "URL"
+
+# Maximum retries with custom archive
+tubetracks --retries 5 --archive ~/my-archive.txt "URL"
+```
+
+### Graphical User Interface
+
+Launch the desktop application:
+
+```bash
+# PyPI installation
+tubetracks-gui
+
+# From source
 python tubetracks_gui.py
-```
 
-Or with Make:
-
-```bash
+# Or using Make
 make gui
 ```
 
+### Python Library
+
+Integrate TubeTracks into your Python projects:
+
+```python
+from downloader import download_audio, DownloadResult
+
+# Simple download
+result = download_audio(
+    url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    output_dir="./downloads",
+    quality="high",
+    audio_format="mp3"
+)
+
+if result.success:
+    print(f"Downloaded: {result.output_path}")
+else:
+    print(f"Failed: {result.error_message}")
+```
+
+See [LIBRARY_USAGE.md](https://github.com/jomardyan/TubeTracks/blob/main/LIBRARY_USAGE.md) for complete API documentation.
+
 ---
 
-## Usage
-
-### Quality Options
-
-| Preset | Bitrate | Use Case |
-|--------|---------|----------|
-| `low` | 128 kbps | Podcasts, audiobooks |
-| `medium` | 192 kbps | General listening (default) |
-| `high` | 320 kbps | High-quality music |
-| `best` | Original | Maximum quality |
-
-### Output Formats
-
-Supported formats: `mp3`, `m4a`, `flac`, `wav`, `ogg`
-
-```bash
-python downloader.py -f mp3 <url>
-python downloader.py -f flac -q best <url>
-```
-
-### Common Options
-
-```bash
-# Custom output directory
-python downloader.py -o ~/Music <url>
-
-# Custom filename template
-python downloader.py -t "%(artist)s - %(title)s" <url>
-
-# Dry-run (preview without downloading)
-python downloader.py --dry-run <url>
-
-# Network options
-python downloader.py --proxy socks5://127.0.0.1:1080 <url>
-python downloader.py --limit-rate 1M <url>
-
-# Error handling
-python downloader.py --retries 5 <url>
-```
+## 📖 Documentation
 
 ### Configuration
 
-View or save configuration:
+TubeTracks supports configuration files for persistent settings:
 
-```bash
-python downloader.py --show-config
-python downloader.py --save-config
+**Configuration Locations** (in order of precedence):
+1. `~/.tubetracks.conf`
+2. `~/.config/tubetracks/config.conf`
+3. `./.tubetracks.conf`
+
+**Example Configuration:**
+
+```ini
+[download]
+quality = high
+format = mp3
+output = ~/Music/TubeTracks
+template = %(artist)s - %(title)s.%(ext)s
+embed_metadata = true
+embed_thumbnail = true
+retries = 3
+
+[archive]
+use_archive = true
+archive_file = ~/.tubetracks_archive.txt
+
+[network]
+# proxy = socks5://127.0.0.1:1080
+# rate_limit = 1M
+# cookies_file = ~/cookies.txt
+
+[logging]
+# log_file = ~/tubetracks.log
 ```
 
-Configuration files are loaded from:
-1. `~/.tubetracks.conf`
-2. `./.tubetracks.conf`
+**Manage Configuration:**
+
+```bash
+# View current configuration
+tubetracks --show-config
+
+# Save current settings to config file
+tubetracks --save-config
+```
+
+### Quality Presets
+
+| Preset | Bitrate | Best For |
+|--------|---------|----------|
+| `low` | 128 kbps | Podcasts, audiobooks, voice content |
+| `medium` | 192 kbps | General listening (default) |
+| `high` | 320 kbps | High-quality music |
+| `best` | Original | Archival, lossless formats |
+
+### Supported Platforms
+
+| Platform | Status | Playlist Support | Auth Required |
+|----------|--------|------------------|---------------|
+| **YouTube** | ✅ Stable | ✅ Yes | ❌ No |
+| **TikTok** | ✅ Stable | ✅ Yes | ❌ No |
+| **Instagram** | ✅ Stable | ❌ No | ⚠️ Optional |
+| **SoundCloud** | ✅ Stable | ✅ Yes | ❌ No |
+| **Spotify** | ✅ Stable | ✅ Yes | ⚠️ Optional |
+| **Twitch** | ✅ Stable | ❌ No | ❌ No |
+| **Dailymotion** | ✅ Stable | ✅ Yes | ❌ No |
+| **Vimeo** | ✅ Stable | ✅ Yes | ⚠️ Optional |
+| **Reddit** | ✅ Stable | ❌ No | ❌ No |
+
+**View all available plugins:**
+```bash
+tubetracks --list-plugins
+```
+
+### Additional Documentation
+
+- **[Library API Documentation](https://github.com/jomardyan/TubeTracks/blob/main/LIBRARY_USAGE.md)** — Python API reference
+- **[Plugin Development Guide](https://github.com/jomardyan/TubeTracks/blob/main/PLUGIN_API.md)** — Create custom platform plugins
+- **[Changelog](https://github.com/jomardyan/TubeTracks/blob/main/CHANGELOG.md)** — Version history and release notes
 
 ---
 
-## Supported Platforms
+## 🛠️ Development
 
-| Platform | Playlist | Content Types |
-|----------|----------|---------------|
-| YouTube | ✅ | Videos, Shorts, Music |
-| TikTok | ✅ | Videos, Clips |
-| Instagram | ❌ | Posts, Reels, Stories |
-| SoundCloud | ✅ | Tracks, Playlists |
-| Spotify | ✅ | Tracks, Playlists, Albums |
-| Twitch | ❌ | VODs, Clips, Highlights |
-| Dailymotion | ✅ | Videos, Playlists |
-| Vimeo | ✅ | Videos, Channels |
-| Reddit | ❌ | Videos, Posts |
+### Setup Development Environment
 
-View all plugins: `python downloader.py --list-plugins`
+```bash
+# Clone repository
+git clone https://github.com/jomardyan/TubeTracks.git
+cd TubeTracks
 
-See [PLUGIN_API.md](https://github.com/jomardyan/TubeTracks/blob/main/PLUGIN_API.md) for custom plugin development.
-
----
-
-## Development
+# Install development dependencies
+pip install -r requirements.txt
+pip install -e ".[dev]"
+```
 
 ### Testing
 
 ```bash
-make test              # Run all tests
-make smoke-test        # Quick validation
-make coverage          # Coverage report
+# Run all tests
+make test
+
+# Quick validation
+make smoke-test
+
+# Coverage report
+make coverage
+
+# Test specific module
+pytest tests/test_downloader.py -v
 ```
 
 ### Code Quality
 
 ```bash
-make lint              # Check code style
-make format            # Auto-format code
-make check             # Run all checks
+# Format code
+make format
+
+# Lint code
+make lint
+
+# Run all checks (format + lint + test)
+make check
+
+# Security scan
+make security
+```
+
+### Build and Distribution
+
+```bash
+# Build package
+make build
+
+# Clean build artifacts
+make clean
+
+# Build documentation
+make docs
 ```
 
 ---
 
-## Disclaimer
+## 🤝 Contributing
 
-This software is provided for educational and personal use only. Users are solely responsible for ensuring their usage complies with applicable laws, regulations, and the terms of service of the platforms from which content is downloaded. The software owner and contributors assume no responsibility or liability for any misuse, legal violations, or consequences arising from the use of this software.
+We welcome contributions! TubeTracks is an open-source project that thrives on community involvement.
 
-By using this software, you acknowledge that:
-- You have the legal right to download the content
-- You will respect copyright laws and intellectual property rights
-- You will comply with the terms of service of all platforms accessed
-- The software owner is not liable for your actions or any resulting damages
+### How to Contribute
 
-## License
+1. **Fork the repository** on GitHub
+2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
+3. **Make your changes** with clear commit messages
+4. **Add tests** for new functionality
+5. **Run the test suite** (`make test`)
+6. **Submit a pull request** with a clear description
 
-This project is licensed under the GNU General Public License v3.0 or later — see [LICENSE](https://github.com/jomardyan/TubeTracks/blob/main/LICENSE) file for details.
+### Contribution Guidelines
 
-## Contributing
+- Follow the existing code style (enforced by `black` and `isort`)
+- Write clear, concise commit messages
+- Add tests for new features
+- Update documentation as needed
+- Ensure all tests pass before submitting PR
 
-Contributions are welcome! Please feel free to submit [issues](https://github.com/jomardyan/TubeTracks/issues) and [pull requests](https://github.com/jomardyan/TubeTracks/pulls).
+### Development Resources
 
-## Acknowledgments
+- **[Issue Tracker](https://github.com/jomardyan/TubeTracks/issues)** — Report bugs or request features
+- **[Pull Requests](https://github.com/jomardyan/TubeTracks/pulls)** — Submit code contributions
+- **[Discussions](https://github.com/jomardyan/TubeTracks/discussions)** — Ask questions or share ideas
 
-This project uses:
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) — YouTube extraction and download
-- [rich](https://github.com/Textualize/rich) — Rich terminal output
-- [FFmpeg](https://ffmpeg.org/) — Audio processing and conversion
+---
+
+## ⚖️ Legal & Compliance
+
+### Disclaimer
+
+**TubeTracks is provided for educational and personal use only.** Users are solely responsible for ensuring their usage complies with:
+
+- Applicable copyright laws and intellectual property rights
+- Platform terms of service and usage policies
+- Local, national, and international regulations
+
+The software developers and contributors assume **no responsibility or liability** for:
+- Any misuse of this software
+- Legal violations or consequences arising from usage
+- Damages or losses incurred from using this software
+
+### User Responsibilities
+
+By using TubeTracks, you acknowledge that:
+
+✅ You have the legal right to download the content  
+✅ You will respect copyright laws and intellectual property rights  
+✅ You will comply with platform terms of service  
+✅ You understand the developers are not liable for your actions  
+
+### License
+
+This project is licensed under the **GNU General Public License v3.0 or later** (GPLv3+).
+
+See [LICENSE](https://github.com/jomardyan/TubeTracks/blob/main/LICENSE) for the full license text.
+
+---
+
+## 🙏 Acknowledgments
+
+TubeTracks is built with and inspired by excellent open-source projects:
+
+- **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** — Powerful media extraction engine
+- **[FFmpeg](https://ffmpeg.org/)** — Industry-standard audio/video processing
+- **[Rich](https://github.com/Textualize/rich)** — Beautiful terminal formatting
+
+---
+
+## 📞 Support
+
+### Getting Help
+
+- 📖 **[Documentation](https://github.com/jomardyan/TubeTracks/blob/main/README.md)** — Start here
+- 🐛 **[Issue Tracker](https://github.com/jomardyan/TubeTracks/issues)** — Report bugs
+- 💬 **[Discussions](https://github.com/jomardyan/TubeTracks/discussions)** — Ask questions
+
+### Project Status
+
+- **Current Version:** 1.5.1
+- **Status:** Active development
+- **Python Support:** 3.8, 3.9, 3.10, 3.11, 3.12
+- **Platforms:** Windows, macOS, Linux
+
+---
+
+<div align="center">
+
+**[⬆ Back to Top](#-tubetracks)**
+
+Made with ❤️ by the TubeTracks community
+
+[![Star on GitHub](https://img.shields.io/github/stars/jomardyan/TubeTracks?style=social)](https://github.com/jomardyan/TubeTracks)
+
+</div>
