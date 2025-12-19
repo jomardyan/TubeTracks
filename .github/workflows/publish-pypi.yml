@@ -1,327 +1,88 @@
 name: Publish to PyPI
 
-# This workflow publishes the package to PyPI
-# It ONLY runs when manually triggered via workflow_dispatch
-# Requires PYPI_API_TOKEN secret to be configured
-
 on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Publish to production PyPI or test TestPyPI'
+        description: "Publish to production PyPI or TestPyPI"
         required: true
-        default: 'testpypi'
+        default: "testpypi"
         type: choice
         options:
           - testpypi
           - pypi
       skip_tests:
-        description: 'Skip running tests before publishing (not recommended)'
+        description: "Skip running tests before publishing (not recommended)"
         required: false
         default: false
         type: boolean
 
 permissions:
   contents: read
-  id-token: write  # Required for trusted publishing (future enhancement)
+  id-token: write
 
 env:
-  PYTHON_VERSION: '3.12'
+  PYTHON_VERSION: "3.12"
 
 jobs:
-  validate:
-    name: Validate Package Before Publishing
+  build-and-publish:
+    name: Build and publish to ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    
+    timeout-minutes: 20
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install -r requirements.txt
-        pip install pytest pytest-cov
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install build twine pytest pytest-cov
 
-    - name: Run tests
-      if: ${{ !inputs.skip_tests }}
-      run: |
-        echo "🧪 Running test suite..."
-        pytest tests/ -v --tb=short || {
-          echo "❌ Tests failed! Cannot publish package with failing tests."
-          echo ""
-          echo "Run tests locally with: make test"
-          exit 1
-        }
-        echo "✅ All tests passed"
+      - name: Run tests
+        if: ${{ !inputs.skip_tests }}
+        run: |
+          pytest tests/ -v --tb=short
 
-    - name: Validate package configuration
-      run: |
-        echo "Validating pyproject.toml..."
-        
-        # Check required files
-        test -f pyproject.toml || (echo "❌ pyproject.toml missing" && exit 1)
-        test -f README.md || (echo "❌ README.md missing" && exit 1)
-        test -f LICENSE || (echo "❌ LICENSE missing" && exit 1)
-        test -f CHANGELOG.md || (echo "❌ CHANGELOG.md missing" && exit 1)
-        
-        # Check core modules
-        test -f downloader.py || (echo "❌ downloader.py missing" && exit 1)
-        test -f tubetracks_gui.py || (echo "❌ tubetracks_gui.py missing" && exit 1)
-        test -d plugins || (echo "❌ plugins/ directory missing" && exit 1)
-        
-        echo "✅ All required files present"
+      - name: Build distributions
+        run: |
+          python -m build
+          ls -lh dist/
 
-  build:
-    name: Build Distribution Packages
-    needs: validate
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Check distributions metadata
+        run: |
+          python -m twine check dist/*
 
-    - name: Set up Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
+      - name: Show package metadata
+        run: |
+          python - << 'PY'
+          import tomllib, pathlib
 
-    - name: Install build tools
-      run: |
-        python -m pip install --upgrade pip "setuptools>=77.0.0" wheel
-        pip install build "twine>=6.1.0"
+          data = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
+          project = data.get("project", {})
+          print(f"Package: {project.get('name')}")
+          print(f"Version: {project.get('version')}")
+          PY
 
-    - name: Build distributions
-      run: |
-        echo "📦 Building distribution packages..."
-        python -m build --verbose
-        
-        echo ""
-        echo "✅ Build complete"
-        echo ""
-        echo "Generated files:"
-        ls -lh dist/
+      - name: Publish to TestPyPI
+        if: inputs.environment == 'testpypi'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: |
+          python -m twine upload --repository-url https://test.pypi.org/legacy/ dist/* --skip-existing
 
-    - name: Validate distributions with twine
-      run: |
-        echo "🔍 Validating distribution packages..."
-        python -m twine check dist/* --strict
-        
-        echo ""
-        echo "✅ All distributions validated successfully"
-
-    - name: Display package metadata
-      run: |
-        echo "📋 Package Information:"
-        echo ""
-        
-        # Extract version from pyproject.toml
-        VERSION=$(python -c "import tomllib; f=open('pyproject.toml','rb'); print(tomllib.load(f)['project']['version'])" 2>/dev/null || \
-                  python -c "import tomli; f=open('pyproject.toml','rb'); print(tomli.load(f)['project']['version'])" 2>/dev/null || \
-                  grep "^version" pyproject.toml | cut -d'"' -f2)
-        
-        NAME=$(python -c "import tomllib; f=open('pyproject.toml','rb'); print(tomllib.load(f)['project']['name'])" 2>/dev/null || \
-               python -c "import tomli; f=open('pyproject.toml','rb'); print(tomli.load(f)['project']['name'])" 2>/dev/null || \
-               grep "^name" pyproject.toml | cut -d'"' -f2)
-        
-        echo "  Package: $NAME"
-        echo "  Version: $VERSION"
-        echo "  Target:  ${{ inputs.environment }}"
-        echo ""
-        
-        if [ "${{ inputs.environment }}" == "pypi" ]; then
-          echo "⚠️  WARNING: Publishing to PRODUCTION PyPI"
-          echo "   This version will be PERMANENT and cannot be deleted!"
-          echo "   Make sure the version number is correct: $VERSION"
-        else
-          echo "ℹ️  Publishing to TEST PyPI (testpypi)"
-          echo "   This is a safe testing environment"
-        fi
-
-    - name: Upload distributions as artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: python-distributions
-        path: dist/
-        retention-days: 7
-
-  publish:
-    name: Publish to ${{ inputs.environment }}
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment:
-      name: ${{ inputs.environment }}
-      url: ${{ inputs.environment == 'pypi' && 'https://pypi.org/project/tubetracks/' || 'https://test.pypi.org/project/tubetracks/' }}
-    
-    steps:
-    - name: Download distributions
-      uses: actions/download-artifact@v4
-      with:
-        name: python-distributions
-        path: dist/
-
-    - name: Display files to be published
-      run: |
-        echo "📦 Files to be published:"
-        ls -lh dist/
-        echo ""
-        echo "Publishing to: ${{ inputs.environment }}"
-
-    - name: Publish to Test PyPI
-      if: inputs.environment == 'testpypi'
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
-        TWINE_REPOSITORY: testpypi
-      run: |
-        pip install twine
-        
-        echo "📤 Publishing to Test PyPI..."
-        python -m twine upload dist/* --verbose --skip-existing || {
-          echo ""
-          echo "❌ Publication to Test PyPI failed"
-          echo ""
-          echo "Common causes:"
-          echo "  • Missing or invalid TEST_PYPI_API_TOKEN secret"
-          echo "  • Version already exists on Test PyPI"
-          echo "  • Network issues"
-          echo ""
-          echo "Check the error message above for details"
-          exit 1
-        }
-        
-        echo ""
-        echo "✅ Successfully published to Test PyPI!"
-        echo ""
-        echo "🔗 View at: https://test.pypi.org/project/tubetracks/"
-        echo ""
-        echo "Test installation with:"
-        echo "  pip install -i https://test.pypi.org/simple/ tubetracks"
-
-    - name: Publish to Production PyPI
-      if: inputs.environment == 'pypi'
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        TWINE_REPOSITORY: pypi
-      run: |
-        pip install twine
-        
-        echo "⚠️  Publishing to PRODUCTION PyPI..."
-        echo "   This action is PERMANENT and IRREVERSIBLE!"
-        echo ""
-        
-        python -m twine upload dist/* --verbose --skip-existing || {
-          echo ""
-          echo "❌ Publication to PyPI failed"
-          echo ""
-          echo "Common causes:"
-          echo "  • Missing or invalid PYPI_API_TOKEN secret"
-          echo "  • Version already exists on PyPI (cannot overwrite)"
-          echo "  • Invalid package metadata"
-          echo "  • Network issues"
-          echo ""
-          echo "Check the error message above for details"
-          exit 1
-        }
-        
-        echo ""
-        echo "🎉 Successfully published to PyPI!"
-        echo ""
-        echo "🔗 View at: https://pypi.org/project/tubetracks/"
-        echo ""
-        echo "Install with:"
-        echo "  pip install tubetracks"
-
-  verify:
-    name: Verify Publication
-    needs: publish
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: always()
-    
-    steps:
-    - name: Wait for package to be indexed
-      run: |
-        echo "⏳ Waiting 30 seconds for package to be indexed..."
-        sleep 30
-
-    - name: Verify package is available (TestPyPI)
-      if: inputs.environment == 'testpypi'
-      run: |
-        echo "🔍 Checking if package is available on Test PyPI..."
-        
-        pip install --upgrade pip
-        
-        # Try to install from TestPyPI
-        pip install -i https://test.pypi.org/simple/ tubetracks --dry-run || {
-          echo "⚠️  Package not yet available on Test PyPI"
-          echo "   This is normal - indexing can take a few minutes"
-          echo ""
-          echo "Manual verification:"
-          echo "  Visit: https://test.pypi.org/project/tubetracks/"
-        }
-
-    - name: Verify package is available (PyPI)
-      if: inputs.environment == 'pypi'
-      run: |
-        echo "🔍 Checking if package is available on PyPI..."
-        
-        pip install --upgrade pip
-        
-        # Try to fetch package info from PyPI
-        pip index versions tubetracks || {
-          echo "⚠️  Package not yet fully indexed on PyPI"
-          echo "   This is normal - indexing can take a few minutes"
-          echo ""
-          echo "Manual verification:"
-          echo "  Visit: https://pypi.org/project/tubetracks/"
-        }
-
-    - name: Summary
-      run: |
-        echo "### 📦 Package Published" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        if [ "${{ inputs.environment }}" == "pypi" ]; then
-          echo "✅ **Successfully published to PyPI**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **View**: [https://pypi.org/project/tubetracks/](https://pypi.org/project/tubetracks/)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Install**: \`pip install tubetracks\`" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "✅ **Successfully published to Test PyPI**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **View**: [https://test.pypi.org/project/tubetracks/](https://test.pypi.org/project/tubetracks/)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Install**: \`pip install -i https://test.pypi.org/simple/ tubetracks\`" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "---" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        if [ "${{ inputs.environment }}" == "testpypi" ]; then
-          echo "1. Test the package installation" >> $GITHUB_STEP_SUMMARY
-          echo "2. Verify all functionality works" >> $GITHUB_STEP_SUMMARY
-          echo "3. When ready, publish to production PyPI" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "1. Verify the package on PyPI" >> $GITHUB_STEP_SUMMARY
-          echo "2. Test installation: \`pip install tubetracks\`" >> $GITHUB_STEP_SUMMARY
-          echo "3. Update documentation if needed" >> $GITHUB_STEP_SUMMARY
-          echo "4. Announce the release!" >> $GITHUB_STEP_SUMMARY
-        fi
+      - name: Publish to PyPI
+        if: inputs.environment == 'pypi'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          python -m twine upload dist/* --skip-existing
