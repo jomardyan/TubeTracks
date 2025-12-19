@@ -7,6 +7,7 @@ name = "ytdownloader"
 version = "1.0.1"
 description = "Enhanced YouTube to MP3 Downloader with multi-platform support, config, archive, and network options"
 readme = "README.md"
+license = {file = "LICENSE"}
 authors = [
     {name = "YouTube MP3 Downloader", email = "hayk.jomardyan@outlook.com"}
 ]
@@ -67,9 +68,6 @@ dev = [
     "build>=0.10.0",
     "twine>=4.0.0",
 ]
-gui = [
-    "tkinter",
-]
 
 [project.scripts]
 ytdownloader = "downloader:main"
@@ -87,7 +85,6 @@ Changelog = "https://github.com/jomardyan/AudioDownload-YT/blob/main/CHANGELOG.m
 py-modules = ["downloader", "ytdownloader_gui"]
 packages = ["plugins"]
 package-dir = {"" = "."}
-license-files = ["LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

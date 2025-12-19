@@ -512,6 +512,8 @@ def classify_error(exception: Exception) -> Tuple[ErrorCode, str]:
             return ErrorCode.AGE_RESTRICTED, f"Age-restricted content: {exception}"
         if "private" in error_str:
             return ErrorCode.NOT_FOUND, f"Video is private: {exception}"
+        if "unavailable" in error_str or "removed" in error_str:
+            return ErrorCode.NOT_FOUND, f"Video unavailable or removed: {exception}"
         return ErrorCode.EXTRACTION_ERROR, f"Extraction failed: {exception}"
 
     if isinstance(exception, DownloadError):
@@ -519,9 +521,11 @@ def classify_error(exception: Exception) -> Tuple[ErrorCode, str]:
             "urlopen" in error_str
             or "connection" in error_str
             or "timeout" in error_str
+            or "503" in error_str
+            or "504" in error_str
         ):
             return ErrorCode.NETWORK_ERROR, f"Network error: {exception}"
-        if "not found" in error_str or "unavailable" in error_str:
+        if "not found" in error_str or "unavailable" in error_str or "404" in error_str:
             return ErrorCode.NOT_FOUND, f"Video unavailable: {exception}"
         return ErrorCode.EXTRACTION_ERROR, f"Download error: {exception}"
 
@@ -955,9 +959,9 @@ class DownloadProgress:
                             "filename": filename,
                         }
                     )
-                except Exception:
-                    # Never allow UI callback failures to break downloads
-                    pass
+                except Exception as e:
+                    # Log callback failures but don't break the download
+                    logging.debug(f"Progress callback failed: {e}")
 
         elif d["status"] == "finished":
             self.current_stage = "downloaded"
@@ -978,8 +982,8 @@ class DownloadProgress:
                             "filename": self.downloaded_file,
                         }
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(f"Finished callback failed: {e}")
 
         elif d["status"] == "error":
             if self.progress:
@@ -998,8 +1002,8 @@ class DownloadProgress:
                             "error": self.last_error,
                         }
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(f"Error callback failed: {e}")
 
     def cleanup(self):
         """Clean up progress display if still active"""
@@ -1889,45 +1893,68 @@ def download_from_batch_file(
 
     failure_count = 0
 
-    for idx, url in enumerate(urls, 1):
+    try:
+        for idx, url in enumerate(urls, 1):
+            if not quiet:
+                console.print(f"[bold]─── Processing {idx}/{len(urls)} ───[/bold]")
+
+            try:
+                result = download_audio(
+                    url=url,
+                    output_dir=output_dir,
+                    quality=quality,
+                    audio_format=audio_format,
+                    embed_metadata=embed_metadata,
+                    embed_thumbnail=embed_thumbnail,
+                    filename_template=filename_template,
+                    quiet=quiet,
+                    max_retries=max_retries,
+                    archive_file=archive_file,
+                    proxy=proxy,
+                    rate_limit=rate_limit,
+                    cookies_file=cookies_file,
+                )
+                results.append(result)
+
+                # Log result
+                if log_file:
+                    log_download_result(result)
+
+                if not result.success:
+                    failure_count += 1
+
+                    if fail_fast:
+                        if not quiet:
+                            console.print("[yellow]Stopping due to --fail-fast flag[/yellow]")
+                        break
+
+                    if max_failures > 0 and failure_count >= max_failures:
+                        if not quiet:
+                            console.print(
+                                f"[yellow]Stopping: reached max failures ({max_failures})[/yellow]"
+                            )
+                        break
+            except KeyboardInterrupt:
+                if not quiet:
+                    console.print("\n[yellow]⚠ Batch download interrupted by user[/yellow]")
+                break
+            except Exception as e:
+                failure_count += 1
+                error_result = DownloadResult(
+                    success=False,
+                    url=url,
+                    error_code=ErrorCode.UNKNOWN_ERROR,
+                    error_message=f"Unexpected error: {e}",
+                    exception=e
+                )
+                results.append(error_result)
+                if not quiet:
+                    console.print(f"[red]✗[/red] Unexpected error processing {url}: {e}")
+                if fail_fast:
+                    break
+    except Exception as e:
         if not quiet:
-            console.print(f"[bold]─── Processing {idx}/{len(urls)} ───[/bold]")
-
-        result = download_audio(
-            url=url,
-            output_dir=output_dir,
-            quality=quality,
-            audio_format=audio_format,
-            embed_metadata=embed_metadata,
-            embed_thumbnail=embed_thumbnail,
-            filename_template=filename_template,
-            quiet=quiet,
-            max_retries=max_retries,
-            archive_file=archive_file,
-            proxy=proxy,
-            rate_limit=rate_limit,
-            cookies_file=cookies_file,
-        )
-        results.append(result)
-
-        # Log result
-        if log_file:
-            log_download_result(result)
-
-        if not result.success:
-            failure_count += 1
-
-            if fail_fast:
-                if not quiet:
-                    console.print("[yellow]Stopping due to --fail-fast flag[/yellow]")
-                break
-
-            if max_failures > 0 and failure_count >= max_failures:
-                if not quiet:
-                    console.print(
-                        f"[yellow]Stopping: reached max failures ({max_failures})[/yellow]"
-                    )
-                break
+            console.print(f"[bold red]Critical error in batch processing:[/bold red] {e}")
 
     # Generate summary
     if not quiet:
