@@ -393,7 +393,7 @@ Built with:
 | Questions | [Discussions](https://github.com/jomardyan/TubeTracks/discussions) |
 
 **Project Status:** Active Development  
-**Current Version:** 1.5.2  
+**Current Version:** 1.6.0<br>
 **Maintainer:** [Hayk Jomardyan](https://github.com/jomardyan)
 
 ---

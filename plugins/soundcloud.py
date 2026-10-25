@@ -14,7 +14,7 @@ class SoundCloudConverter(YtDlpConverter, BaseConverter):
     def get_capabilities(self) -> PluginCapabilities:
         return PluginCapabilities(
             name="SoundCloud Converter",
-            version="1.5.2",
+            version="1.6.0",
             platform="SoundCloud",
             description="Download audio tracks from SoundCloud",
             author="YouTube MP3 Downloader",
