@@ -14,7 +14,7 @@ class DailymotionConverter(YtDlpConverter, BaseConverter):
     def get_capabilities(self) -> PluginCapabilities:
         return PluginCapabilities(
             name="Dailymotion Converter",
-            version="1.5.2",
+            version="1.6.0",
             platform="Dailymotion",
             description="Download videos from Dailymotion",
             author="YouTube MP3 Downloader",

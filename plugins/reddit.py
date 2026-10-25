@@ -14,7 +14,7 @@ class RedditConverter(YtDlpConverter, BaseConverter):
     def get_capabilities(self) -> PluginCapabilities:
         return PluginCapabilities(
             name="Reddit Converter",
-            version="1.5.2",
+            version="1.6.0",
             platform="Reddit",
             description="Download videos and audio from Reddit posts",
             author="YouTube MP3 Downloader",

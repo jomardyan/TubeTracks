@@ -64,7 +64,7 @@ jobs:
 
       - name: Check distributions metadata
         run: |
-          python -m twine check dist/*
+          python -m twine check --strict dist/*
 
       - name: Show package metadata
         run: |
@@ -83,7 +83,7 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
         run: |
-          python -m twine upload --repository-url https://test.pypi.org/legacy/ dist/* --skip-existing
+          python -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
       - name: Publish to PyPI
         if: inputs.environment == 'pypi'
@@ -91,4 +91,4 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          python -m twine upload dist/* --skip-existing
+          python -m twine upload dist/*

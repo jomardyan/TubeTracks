@@ -14,7 +14,7 @@ class VimeoConverter(YtDlpConverter, BaseConverter):
     def get_capabilities(self) -> PluginCapabilities:
         return PluginCapabilities(
             name="Vimeo Converter",
-            version="1.5.2",
+            version="1.6.0",
             platform="Vimeo",
             description="Download videos from Vimeo",
             author="YouTube MP3 Downloader",
