@@ -6,7 +6,7 @@
 
 ### Core Components
 
-1. **[downloader.py](../downloader.py)** (2,419 lines): Main CLI orchestrator
+1. **[downloader.py](../downloader.py)**: Main CLI orchestrator
    - Handles quality presets (`QUALITY_PRESETS`: low/medium/high/best → bitrate)
    - Manages download lifecycle with retry logic and exponential backoff
    - Wraps yt-dlp with custom progress tracking via `DownloadProgress` class
@@ -16,9 +16,9 @@
    - **Base**: [plugins/base.py](../plugins/base.py) defines `BaseConverter` abstract class
    - **Registry**: `PluginRegistry` auto-discovers handlers via `can_handle(url)` method
    - **Auto-registration**: All plugins registered in `plugins/__init__.py::register_default_plugins()`
-   - Each plugin implements: `get_capabilities()`, `validate_url()`, `get_info()`, `download()`
+   - Built-in plugins implement capabilities and URL matching/validation, and inherit `get_info()` and `download()` from `plugins/yt_dlp_converter.py`. Custom plugins can still implement all `BaseConverter` methods.
 
-3. **[ytdownloader_gui.py](../ytdownloader_gui.py)** (973 lines): Tkinter desktop GUI
+3. **[tubetracks_gui.py](../tubetracks_gui.py)**: Tkinter desktop GUI
    - Threading model: Background worker threads with `queue.Queue` for UI updates
    - Cancellation via `threading.Event` checked in progress hooks
    - Uses [downloader.py](../downloader.py) as backend library (no CLI coupling)
@@ -36,13 +36,13 @@
 
 ```bash
 # Run full test suite (cross-platform matrix in CI)
-make test                # pytest with coverage
+make test                # Complete pytest suite
 make smoke-test         # Quick validation only
-make lint               # ruff/flake8 style checks
-make format             # black + isort auto-formatting
+make lint               # Ruff lint and format checks
+make format             # Ruff import sorting and formatting
 ```
 
-**Test Structure**: [tests/test_smoke.py](../tests/test_smoke.py) validates URL patterns, config loading, FFmpeg detection. No live download tests (network-free).
+**Test Structure**: [tests/test_smoke.py](../tests/test_smoke.py) validates URL patterns, config loading, FFmpeg detection. Local integration tests use generated media served on loopback with real yt-dlp and FFmpeg. Run GUI checks under Xvfb on headless Linux. No external media services are contacted.
 
 ### Building & Packaging
 
@@ -52,8 +52,8 @@ make publish            # twine upload to PyPI
 ```
 
 **Entry Points** (pyproject.toml):
-- `ytdownloader` / `ytdl` → `downloader:main`
-- `ytdownloader-gui` → `ytdownloader_gui:main`
+- `tubetracks` / `audiodownload` / `ytdl` → `downloader:main`
+- `tubetracks-gui` → `ytdownloader_gui:main`
 
 ### GUI Development
 
@@ -73,7 +73,7 @@ self._poll_queue()                       # Tkinter after() loop for updates
 
 ### Code Patterns
 
-**Progress Tracking**: Always use `DownloadProgress` class with `progress_hook` parameter:
+**Progress Tracking**: Built-in plugins forward download and postprocessing hooks through the shared adapter. `DownloadProgress` remains available for text callbacks:
 ```python
 progress_tracker = DownloadProgress(quiet=quiet, progress_callback=callback, cancel_event=cancel)
 ydl_opts['progress_hooks'] = [progress_tracker.hook]
@@ -216,9 +216,9 @@ The project already has comprehensive documentation. **Never** automatically cre
 
 **Add new format**: Update `SUPPORTED_FORMATS` list + FFmpeg postprocessor mapping
 
-**Modify GUI layout**: Edit `App._build_ui()` in [ytdownloader_gui.py](../ytdownloader_gui.py)
+**Modify GUI layout**: Edit `App._build_ui()` in [tubetracks_gui.py](../tubetracks_gui.py)
 
-**Change concurrent downloads**: Modify `ThreadPoolExecutor(max_workers=...)` in `_download_playlist()`
+**Change concurrent downloads**: Modify `ThreadPoolExecutor(max_workers=...)` in `tubetracks_gui.App._run_worker()` or `downloader.main()`
 
 **Update version**: Edit `__version__` in [downloader.py](../downloader.py) and `version` in [pyproject.toml](../pyproject.toml)
 

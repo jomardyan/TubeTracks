@@ -4,10 +4,10 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/tubetracks.svg)](https://pypi.org/project/tubetracks/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/tubetracks.svg)](https://pypi.org/project/tubetracks/)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Build Status](https://github.com/jomardyan/TubeTracks/actions/workflows/build.yml/badge.svg)](https://github.com/jomardyan/TubeTracks/actions)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Code style: Ruff](https://img.shields.io/badge/code%20style-Ruff-d7ff64.svg)](https://docs.astral.sh/ruff/)
 
 **A professional-grade, multi-platform media downloader for audio extraction and conversion.**
 
@@ -54,7 +54,7 @@ TubeTracks is a command-line and GUI application designed for reliable audio ext
 ### Core Functionality
 
 - **Multi-Platform Support** — YouTube, TikTok, Instagram, SoundCloud, Spotify, Twitch, Dailymotion, Vimeo, Reddit
-- **Quality Control** — Four preset levels (128–320 kbps) plus lossless original
+- **Quality Control** — Four preset levels (128–320 kbps) plus best encoder quality
 - **Format Conversion** — MP3, M4A, FLAC, WAV, OGG output via FFmpeg
 - **Batch Processing** — Concurrent downloads with configurable thread count (1–5)
 - **Dual Interface** — Full-featured CLI and cross-platform GUI (Tkinter)
@@ -77,13 +77,13 @@ TubeTracks is a command-line and GUI application designed for reliable audio ext
 
 | Component | Requirement |
 |-----------|-------------|
-| Python | 3.8 or higher |
+| Python | 3.10 or higher (3.11+ recommended) |
 | FFmpeg | Latest stable release |
 | OS | Windows, macOS, or Linux |
 
 **Dependencies** (installed automatically):
-- `yt-dlp >= 2024.0.0`
-- `rich >= 13.0.0`
+- `yt-dlp[default] >= 2026.10.21`
+- `rich >= 15.0.0, < 16`
 
 ---
 
@@ -139,6 +139,20 @@ sudo dnf install ffmpeg
 sudo pacman -S ffmpeg
 ```
 </details>
+
+### YouTube JavaScript Support
+
+Current yt-dlp releases need a supported JavaScript runtime for full YouTube support.
+The default dependencies include the yt-dlp EJS challenge scripts. Install
+[Deno](https://docs.deno.com/runtime/getting_started/installation/) as well, or use
+yt-dlp's optional runtime package in the same Python environment:
+
+```bash
+python -m pip install --upgrade "yt-dlp[default,deno]"
+```
+
+Tkinter is provided with most Python installers. On Debian/Ubuntu, install
+`python3-tk` separately if needed.
 
 ### Verify Installation
 
@@ -212,11 +226,10 @@ See [LIBRARY_USAGE.md](https://github.com/jomardyan/TubeTracks/blob/main/LIBRARY
 
 ## Configuration
 
-TubeTracks uses INI-format configuration files loaded from these locations (in order of precedence):
-
-1. `~/.tubetracks.conf`
-2. `~/.config/tubetracks/config.conf`
-3. `./.tubetracks.conf`
+TubeTracks loads INI-format settings from `~/.ytdownloader.conf`, preserving
+compatibility with existing installations. Use `--config path/to/settings.conf`
+to select another file. Explicit CLI options override saved settings.
+The default download archive is `~/.ytdownloader_archive.txt`.
 
 **Example configuration:**
 
@@ -232,7 +245,7 @@ retries = 3
 
 [archive]
 use_archive = true
-archive_file = ~/.tubetracks_archive.txt
+archive_file = ~/.ytdownloader_archive.txt
 
 [network]
 # proxy = socks5://127.0.0.1:1080
@@ -253,7 +266,7 @@ tubetracks --save-config    # Save to config file
 | `low` | 128 kbps | Podcasts, spoken word |
 | `medium` | 192 kbps | General listening (default) |
 | `high` | 320 kbps | High-fidelity music |
-| `best` | Original | Archival, lossless output |
+| `best` | Best encoder quality | Highest quality supported by the selected codec |
 
 ---
 
@@ -296,9 +309,18 @@ tubetracks --list-plugins  # View all available plugins
 ```bash
 git clone https://github.com/jomardyan/TubeTracks.git
 cd TubeTracks
-pip install -r requirements.txt
-pip install -e ".[dev]"
+python -m venv .venv
+# Activate .venv, then:
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
 ```
+
+The suite includes local media conversion tests and Tkinter lifecycle tests.
+Install FFmpeg and ffprobe to run the media tests. On headless Linux, install
+Xvfb and run `xvfb-run -a python -m pytest` to include the GUI tests.
+Tests use generated media served on loopback; they do not contact external media
+platforms. Live platform availability and account authentication need separate
+manual checks. CI runs the suite on Python 3.10–3.14 on Linux, macOS and Windows.
 
 ### Commands
 
@@ -324,7 +346,7 @@ Contributions are welcome. Please follow these steps:
 6. Submit a pull request
 
 **Guidelines:**
-- Follow [Black](https://github.com/psf/black) code style
+- Use [Ruff](https://docs.astral.sh/ruff/) for linting, import sorting, and formatting
 - Include tests for new features
 - Update documentation as needed
 

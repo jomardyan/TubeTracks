@@ -24,9 +24,9 @@ help:
 	@echo "  make smoke-test      Run quick validation tests"
 	@echo "  make coverage        Generate test coverage report"
 	@echo "  make lint            Check code style"
-	@echo "  make format          Auto-format code (black, isort)"
+	@echo "  make format          Auto-format code (Ruff)"
 	@echo "  make security        Run security checks"
-	@echo "  make check           Run all quality checks (lint, type, security)"
+	@echo "  make check           Run lint, tests and security checks"
 	@echo "  make validate        Validate project structure and dependencies"
 	@echo ""
 	@echo "$(GREEN)Build & Distribution:$(NC)"
@@ -69,7 +69,6 @@ install:
 install-dev:
 	@echo "$(BLUE)→ Installing with development dependencies...$(NC)"
 	pip install -e ".[dev]"
-	pip install black isort pytest-cov ruff bandit
 	@echo "$(GREEN)✓ Development setup complete$(NC)"
 
 # Validate project structure and dependencies
@@ -98,38 +97,24 @@ smoke-test:
 # Generate coverage report
 coverage:
 	@echo "$(BLUE)→ Generating coverage report...$(NC)"
-	python -m pytest tests/ -v --cov=. --cov-report=term-missing --cov-report=html
+	python -m pytest tests/ -v --cov --cov-report=term-missing --cov-report=html
 	@echo "$(GREEN)✓ Coverage report generated in htmlcov/index.html$(NC)"
 
-# Format code
+# Format code and imports with the same tool used in CI
 format:
-	@echo "$(BLUE)→ Formatting code with black...$(NC)"
-	black downloader.py tubetracks_gui.py tests/
-	@echo "$(BLUE)→ Sorting imports with isort...$(NC)"
-	isort downloader.py tubetracks_gui.py tests/
-	@echo "$(GREEN)✓ Code formatting complete$(NC)"
+	python -m ruff check --select I --fix .
+	python -m ruff format .
 
-# Lint code
+# Quality checks must propagate failures
 lint:
-	@echo "$(BLUE)→ Running linter...$(NC)"
-	@which ruff > /dev/null 2>&1 && (echo "$(BLUE)Using ruff...$(NC)" && ruff check .) || \
-	which flake8 > /dev/null 2>&1 && (echo "$(BLUE)Using flake8...$(NC)" && flake8 .) || \
-	(echo "$(YELLOW)No linter found. Install with: pip install ruff flake8$(NC)")
+	python -m ruff check .
+	python -m ruff format --check .
 
-# Security checks
 security:
-	@echo "$(BLUE)→ Running security checks...$(NC)"
-	@which bandit > /dev/null 2>&1 && bandit -r downloader.py || \
-	(echo "$(YELLOW)Bandit not found. Install with: pip install bandit$(NC)")
+	python -m bandit -r downloader.py tubetracks_gui.py plugins -ll
+	python -m pip_audit --local --progress-spinner off
 
-# Run all quality checks
-check: lint
-	@echo "$(BLUE)→ Running all quality checks...$(NC)"
-	@echo "$(BLUE)  Linting...$(NC)"
-	-ruff check . || echo "$(YELLOW)  Some linting issues found$(NC)"
-	@echo "$(BLUE)  Running tests...$(NC)"
-	python -m pytest tests/test_smoke.py -v --tb=short
-	@echo "$(GREEN)✓ Quality checks complete$(NC)"
+check: lint test security
 
 # Clean build artifacts
 clean:

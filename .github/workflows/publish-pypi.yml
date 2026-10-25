@@ -22,7 +22,7 @@ permissions:
   id-token: write
 
 env:
-  PYTHON_VERSION: "3.12"
+  PYTHON_VERSION: "3.14"
 
 jobs:
   build-and-publish:
@@ -32,24 +32,30 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install build twine pytest pytest-cov
+          python -m pip install -e '.[dev]'
+
+      - name: Install test runtime
+        if: ${{ !inputs.skip_tests }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg xvfb python3-tk
 
       - name: Run tests
         if: ${{ !inputs.skip_tests }}
         run: |
-          pytest tests/ -v --tb=short
+          xvfb-run -a python -m pytest tests/ -v --tb=short
 
       - name: Build distributions
         run: |

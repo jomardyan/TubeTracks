@@ -3,11 +3,9 @@ Smoke tests for TubeTracks
 Tests CLI argument parsing, config loading, and basic functionality
 """
 
-import os
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -19,11 +17,9 @@ from downloader import (
     SUPPORTED_FORMATS,
     Config,
     DownloadResult,
-    ErrorCode,
     _parse_rate_limit,
     check_ffmpeg,
     check_output_dir,
-    load_config,
     sanitize_filename,
     validate_url,
 )
@@ -345,22 +341,6 @@ class TestCLIArgumentParsing:
         )
         assert result.returncode == 2  # EXIT_VALIDATION_ERROR
         assert "error" in result.stdout.lower() or "usage" in result.stdout.lower()
-
-
-class TestBatchFileHandling:
-    """Tests for batch file processing"""
-
-    def test_batch_file_not_found(self):
-        """Test error handling for missing batch file (skipped - not implemented yet)"""
-        # Batch file functionality not yet implemented
-        # This test will be enabled when -b flag is added
-        pytest.skip("Batch file functionality not yet implemented")
-
-    def test_empty_batch_file(self):
-        """Test handling of empty batch file (skipped - not implemented yet)"""
-        # Batch file functionality not yet implemented
-        # This test will be enabled when -b flag is added
-        pytest.skip("Batch file functionality not yet implemented")
 
 
 if __name__ == "__main__":

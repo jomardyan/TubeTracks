@@ -4,7 +4,7 @@ TubeTracks can be used as a Python library to integrate media downloading capabi
 
 ## Installation
 
-First, install the package from PyPI:
+Requires Python 3.10+ and FFmpeg. Install the package from PyPI:
 
 ```bash
 pip install tubetracks
@@ -50,19 +50,24 @@ result = download_audio(
 
 ### Downloading Playlists
 
-To download a playlist, set `is_playlist=True`. You can also control concurrency.
+To download a playlist, set `is_playlist=True`. Entries are processed by yt-dlp; the result reports the last completed file. For multiple independent URLs, the CLI supports `--concurrent-downloads`.
 
 ```python
 result = download_audio(
     url="https://www.youtube.com/playlist?list=PL...",
     is_playlist=True,
-    concurrent_downloads=3,  # Download 3 videos in parallel
     skip_existing=True       # Skip files that already exist
 )
 
 print(f"Playlist result: {result.title}")
 print(f"Total time: {result.duration_seconds:.2f}s")
 ```
+
+Successful results contain the final path after conversion, including the actual
+output extension. `ogg` and `vorbis` both produce Ogg Vorbis files (`.ogg`).
+WAV does not support embedded cover art; thumbnail embedding is skipped for WAV.
+`best` selects the encoder's highest quality and does not restore quality missing
+from the original source.
 
 ### Handling Results
 

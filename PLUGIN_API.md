@@ -83,6 +83,15 @@ registry.register('myplugin', MyConverter())
 plugin = registry.get_plugin('youtube')
 ```
 
+### Shared yt-dlp adapter
+
+Built-in converters inherit `YtDlpConverter` from `plugins.yt_dlp_converter` before
+`BaseConverter`. It supplies `get_info()` and `download()` with consistent format
+conversion, proxy/cookie/rate options, archive handling, cancellation, and final
+output paths. New yt-dlp plugins can reuse this adapter and implement only their
+capabilities, URL matching, and URL validation. Custom extractors can continue
+implementing the `BaseConverter` methods directly.
+
 ## Creating a New Plugin
 
 ### Step 1: Create Plugin File

@@ -8,8 +8,7 @@ the downloader with support for multiple platforms beyond YouTube.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class ContentType(Enum):
@@ -37,15 +36,15 @@ class PluginCapabilities:
     platform: str  # e.g., "YouTube", "TikTok", "Spotify"
     description: str
     author: str
-    url_patterns: List[str]  # Regex patterns for URL matching
-    supported_content_types: List[ContentType]
+    url_patterns: list[str]  # Regex patterns for URL matching
+    supported_content_types: list[ContentType]
     supports_playlist: bool = False
     supports_auth: bool = False
     supports_subtitles: bool = False
     supports_metadata: bool = True
     extractor_type: ExtractorType = ExtractorType.YT_DLP
-    quality_presets: List[str] = None
-    output_formats: List[str] = None
+    quality_presets: list[str] = None
+    output_formats: list[str] = None
 
     def __post_init__(self):
         if self.quality_presets is None:
@@ -62,7 +61,7 @@ class BaseConverter(ABC):
     """
 
     def __init__(self):
-        self._capabilities: Optional[PluginCapabilities] = None
+        self._capabilities: PluginCapabilities | None = None
 
     @property
     def capabilities(self) -> PluginCapabilities:
@@ -95,7 +94,7 @@ class BaseConverter(ABC):
         pass
 
     @abstractmethod
-    def get_info(self, url: str, **kwargs) -> Dict[str, Any]:
+    def get_info(self, url: str, **kwargs) -> dict[str, Any]:
         """
         Extract metadata and information from the URL without downloading.
 
@@ -116,7 +115,7 @@ class BaseConverter(ABC):
         quality: str = "medium",
         format: str = "mp3",
         **kwargs,
-    ) -> Tuple[bool, Optional[str], Optional[str]]:
+    ) -> tuple[bool, str | None, str | None]:
         """
         Download and convert content from the URL.
 
@@ -136,7 +135,7 @@ class BaseConverter(ABC):
         pass
 
     @abstractmethod
-    def validate_url(self, url: str) -> Tuple[bool, str]:
+    def validate_url(self, url: str) -> tuple[bool, str]:
         """
         Validate if the URL format is correct for this platform.
 
@@ -156,11 +155,11 @@ class BaseConverter(ABC):
         """Check if plugin requires/supports authentication"""
         return self.capabilities.supports_auth
 
-    def get_quality_presets(self) -> List[str]:
+    def get_quality_presets(self) -> list[str]:
         """Get available quality presets for this platform"""
         return self.capabilities.quality_presets
 
-    def get_output_formats(self) -> List[str]:
+    def get_output_formats(self) -> list[str]:
         """Get available output formats for this platform"""
         return self.capabilities.output_formats
 
@@ -173,8 +172,8 @@ class PluginRegistry:
     """
 
     def __init__(self):
-        self._plugins: Dict[str, BaseConverter] = {}
-        self._url_pattern_cache: Dict[str, BaseConverter] = {}
+        self._plugins: dict[str, BaseConverter] = {}
+        self._url_pattern_cache: dict[str, BaseConverter] = {}
 
     def register(self, plugin_id: str, plugin: BaseConverter) -> None:
         """
@@ -185,7 +184,7 @@ class PluginRegistry:
             plugin: An instance of BaseConverter
         """
         if not isinstance(plugin, BaseConverter):
-            raise TypeError(f"Plugin must inherit from BaseConverter")
+            raise TypeError("Plugin must inherit from BaseConverter")
 
         self._plugins[plugin_id] = plugin
         self._url_pattern_cache.clear()  # Invalidate cache
@@ -196,15 +195,15 @@ class PluginRegistry:
             del self._plugins[plugin_id]
             self._url_pattern_cache.clear()
 
-    def get_plugin(self, plugin_id: str) -> Optional[BaseConverter]:
+    def get_plugin(self, plugin_id: str) -> BaseConverter | None:
         """Get a specific plugin by ID"""
         return self._plugins.get(plugin_id)
 
-    def list_plugins(self) -> Dict[str, PluginCapabilities]:
+    def list_plugins(self) -> dict[str, PluginCapabilities]:
         """List all registered plugins with their capabilities"""
         return {pid: plugin.capabilities for pid, plugin in self._plugins.items()}
 
-    def find_plugin_for_url(self, url: str) -> Optional[Tuple[str, BaseConverter]]:
+    def find_plugin_for_url(self, url: str) -> tuple[str, BaseConverter] | None:
         """
         Find the appropriate plugin for a given URL.
 
@@ -231,7 +230,7 @@ class PluginRegistry:
 
         return None
 
-    def get_plugins_for_platform(self, platform: str) -> Dict[str, BaseConverter]:
+    def get_plugins_for_platform(self, platform: str) -> dict[str, BaseConverter]:
         """Get all plugins for a specific platform (e.g., 'YouTube')"""
         return {
             pid: plugin
@@ -241,7 +240,7 @@ class PluginRegistry:
 
     def get_plugins_by_content_type(
         self, content_type: ContentType
-    ) -> Dict[str, BaseConverter]:
+    ) -> dict[str, BaseConverter]:
         """Get all plugins that support a specific content type"""
         return {
             pid: plugin
@@ -249,7 +248,7 @@ class PluginRegistry:
             if content_type in plugin.capabilities.supported_content_types
         }
 
-    def get_all_supported_patterns(self) -> List[str]:
+    def get_all_supported_patterns(self) -> list[str]:
         """Get all URL patterns supported by registered plugins"""
         patterns = []
         for plugin in self._plugins.values():
@@ -270,7 +269,7 @@ class PluginRegistry:
 
 
 # Global plugin registry
-_global_registry: Optional[PluginRegistry] = None
+_global_registry: PluginRegistry | None = None
 
 
 def get_global_registry() -> PluginRegistry:
