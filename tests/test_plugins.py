@@ -2,10 +2,8 @@
 Tests for the plugin system and platform converters
 """
 
-import os
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -13,9 +11,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import plugins module - this will auto-register all plugins
-import plugins
 from plugins import (
-    BaseConverter,
     ContentType,
     DailymotionConverter,
     ExtractorType,
@@ -543,9 +539,9 @@ class TestGlobalRegistry:
             result = registry.find_plugin_for_url(url)
             assert result is not None, f"No plugin found for {url}"
             plugin_id, converter = result
-            assert (
-                plugin_id == expected_plugin_id
-            ), f"Expected {expected_plugin_id} for {url}, got {plugin_id}"
+            assert plugin_id == expected_plugin_id, (
+                f"Expected {expected_plugin_id} for {url}, got {plugin_id}"
+            )
 
 
 class TestPluginCapabilities:

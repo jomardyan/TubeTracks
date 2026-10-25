@@ -3,15 +3,12 @@ SoundCloud converter plugin - download audio from SoundCloud tracks.
 """
 
 import re
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
-
-import yt_dlp
 
 from .base import BaseConverter, ContentType, ExtractorType, PluginCapabilities
+from .yt_dlp_converter import YtDlpConverter
 
 
-class SoundCloudConverter(BaseConverter):
+class SoundCloudConverter(YtDlpConverter, BaseConverter):
     """SoundCloud audio downloader"""
 
     def get_capabilities(self) -> PluginCapabilities:
@@ -43,7 +40,7 @@ class SoundCloudConverter(BaseConverter):
                 return True
         return False
 
-    def validate_url(self, url: str) -> Tuple[bool, str]:
+    def validate_url(self, url: str) -> tuple[bool, str]:
         """Validate SoundCloud URL format"""
         if not url:
             return False, "URL cannot be empty"
@@ -52,100 +49,3 @@ class SoundCloudConverter(BaseConverter):
             return True, ""
 
         return False, f"Invalid SoundCloud URL format: {url}"
-
-    def get_info(self, url: str, **kwargs) -> Dict[str, Any]:
-        """Extract metadata from SoundCloud URL"""
-        try:
-            ydl_opts = {
-                "quiet": True,
-                "no_warnings": True,
-                "noplaylist": not kwargs.get("is_playlist", False),
-            }
-
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                entries = info.get("entries")
-
-                return {
-                    "title": info.get("title", "Unknown"),
-                    "duration": info.get("duration", 0),
-                    "thumbnail": info.get("thumbnail", None),
-                    "uploader": info.get("uploader", "Unknown"),
-                    "description": info.get("description", ""),
-                    "view_count": info.get("view_count", 0),
-                    "like_count": info.get("like_count", 0),
-                    "comment_count": info.get("comment_count", 0),
-                    "is_playlist": bool(entries),
-                    "video_count": len(entries) if entries else 1,
-                    "entries": entries,
-                }
-        except Exception as e:
-            raise RuntimeError(f"Failed to extract SoundCloud info: {e}")
-
-    def download(
-        self,
-        url: str,
-        output_path: str,
-        quality: str = "medium",
-        format: str = "mp3",
-        **kwargs,
-    ) -> Tuple[bool, Optional[str], Optional[str]]:
-        """Download audio from SoundCloud"""
-        try:
-            Path(output_path).mkdir(parents=True, exist_ok=True)
-            filename_template = kwargs.get("filename_template", "%(title)s.%(ext)s")
-            outtmpl = str(Path(output_path) / filename_template)
-
-            bitrates = {
-                "low": "128",
-                "medium": "192",
-                "high": "320",
-            }
-            bitrate = bitrates.get(quality, "192")
-
-            postprocessors = []
-            if format == "mp3":
-                postprocessors.append(
-                    {
-                        "key": "FFmpegExtractAudio",
-                        "preferredcodec": "mp3",
-                        "preferredquality": bitrate,
-                    }
-                )
-
-            progress_hook = kwargs.get("progress_hook")
-
-            ydl_opts = {
-                "format": "best",
-                "postprocessors": postprocessors,
-                "outtmpl": outtmpl,
-                "quiet": kwargs.get("quiet", False),
-                "no_warnings": kwargs.get("quiet", False),
-                "noplaylist": not kwargs.get("is_playlist", False),
-            }
-
-            if kwargs.get("proxy"):
-                ydl_opts["proxy"] = kwargs["proxy"]
-            if kwargs.get("rate_limit"):
-                ydl_opts["ratelimit"] = kwargs["rate_limit"]
-
-            downloaded_file = None
-
-            class ProgressHook:
-                def __call__(self, d):
-                    nonlocal downloaded_file
-                    if d["status"] == "finished":
-                        downloaded_file = d.get("filename")
-
-            hooks = [ProgressHook()]
-            if progress_hook:
-                hooks.append(progress_hook)
-            ydl_opts["progress_hooks"] = hooks
-
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
-
-            return True, downloaded_file, None
-
-        except Exception as e:
-            return False, None, f"SoundCloud download failed: {str(e)}"

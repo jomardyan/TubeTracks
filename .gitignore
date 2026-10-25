@@ -153,3 +153,6 @@ actionlint
 
 # twine
 .twine/
+
+# Ruff cache
+.ruff_cache/

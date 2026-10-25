@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Require Python 3.10+ and update yt-dlp (including its default extraction and metadata extras), Rich, and development tools.
+- Use Ruff for formatting, import sorting and linting; update packaging to SPDX license metadata.
+- Consolidate built-in converters behind one yt-dlp adapter and rely on maintained YouTube client defaults.
+- Run CI on pushes and pull requests across Python 3.10–3.14, with enforced linting, dependency audits, real conversion tests, GUI checks and isolated wheel installation.
+
+### Fixed
+- Honor output formats, rate limits, cookies, metadata and archive options consistently across plugins.
+- Return final converted paths and report current yt-dlp postprocessing stages.
+- Normalize lazy playlists and build complete previews with filename-template resolution.
+- Make retry waits cancellable and cancel background work when closing the GUI.
+- Honor the GUI concurrent download setting and saved concurrency defaults.
+- Connect CLI batch, playlist, dry-run, configuration, network and concurrency options.
+
+### Added
+- Local FFmpeg/yt-dlp integration tests, GUI lifecycle tests and downloader regression tests.
+- Weekly Dependabot updates for Python dependencies and GitHub Actions.
+
 ## [1.5.2] - 2026-01-27
 
 ### Added

@@ -9,40 +9,26 @@ Plugin system for multi-platform support (YouTube, TikTok, Instagram, Spotify, S
 from __future__ import annotations
 
 import argparse
-import io
 import json
-import locale
-import logging
-import os
 import re
 import shutil
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from configparser import ConfigParser, RawConfigParser
-from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from configparser import RawConfigParser
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 import yt_dlp
 from rich.console import Console
-from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    DownloadColumn,
-    Progress,
-    TextColumn,
-    TimeRemainingColumn,
-    TransferSpeedColumn,
-)
-from rich.table import Table
-from yt_dlp.utils import DownloadError, ExtractorError, PostProcessingError
+from yt_dlp.utils import DownloadError
 
 # Import plugin system
 try:
-    from plugins import BaseConverter, ContentType, get_global_registry
+    from plugins import BaseConverter, get_global_registry
 
     PLUGINS_AVAILABLE = True
 except ImportError:
@@ -62,7 +48,7 @@ QUALITY_PRESETS = {
     "low": "128",
     "medium": "192",
     "high": "320",
-    "best": "0",  # 0 = original quality (lossless)
+    "best": "0",  # Highest encoder quality; cannot restore source quality
 }
 
 # Supported audio/video output formats
@@ -116,11 +102,11 @@ class Config:
     embed_metadata: bool = True
     embed_thumbnail: bool = True
     use_archive: bool = True
-    archive_file: Optional[str] = None
-    proxy: Optional[str] = None
-    rate_limit: Optional[str] = None
-    cookies_file: Optional[str] = None
-    log_file: Optional[str] = None
+    archive_file: str | None = None
+    proxy: str | None = None
+    rate_limit: str | None = None
+    cookies_file: str | None = None
+    log_file: str | None = None
     quiet: bool = False
     dry_run: bool = False
 
@@ -154,14 +140,14 @@ class Config:
         if self.log_file:
             config.set("logging", "log_file", self.log_file)
 
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             config.write(f)
 
     @classmethod
     def from_file(cls, path: Path) -> Config:
         """Load configuration from INI file"""
         config = RawConfigParser()
-        config.read(path)
+        config.read(path, encoding="utf-8")
 
         kwargs = {}
         if config.has_section("download"):
@@ -214,7 +200,7 @@ class DownloadResult:
     success: bool
     url: str = ""
     title: str = ""
-    output_path: Optional[str] = None
+    output_path: str | None = None
     error_code: ErrorCode = ErrorCode.SUCCESS
     error_message: str = ""
     attempts: int = 1
@@ -222,7 +208,7 @@ class DownloadResult:
     file_size: int = 0
     skipped: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             "success": self.success,
@@ -251,7 +237,7 @@ class DownloadResult:
 # ============================================================================
 
 
-def _parse_rate_limit(limit: Optional[str]) -> Optional[int]:
+def _parse_rate_limit(limit: str | None) -> int | None:
     """Parse rate limit string (e.g., '500K', '1M', '1G') to bytes per second"""
     if not limit:
         return None
@@ -318,7 +304,7 @@ def _is_retryable(error_code: ErrorCode) -> bool:
     }
 
 
-def _normalize_progress_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_progress_payload(payload: dict[str, Any]) -> dict[str, Any]:
     """Normalize yt-dlp progress payload for the GUI."""
     status = payload.get("status")
     postprocessor = (payload.get("postprocessor") or "").lower()
@@ -330,9 +316,9 @@ def _normalize_progress_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         stage = stage or "downloaded"
 
     if postprocessor:
-        if "ffmpegextractaudio" in postprocessor:
+        if "extractaudio" in postprocessor:
             stage = "converting"
-        elif "ffmpegmetadata" in postprocessor:
+        elif "metadata" in postprocessor:
             stage = "metadata"
         elif "embedthumbnail" in postprocessor or "thumbnail" in postprocessor:
             stage = "thumbnail"
@@ -364,7 +350,7 @@ def sanitize_filename(filename: str) -> str:
     return filename.strip() or "untitled"
 
 
-def validate_url(url: str) -> Tuple[bool, str]:
+def validate_url(url: str) -> tuple[bool, str]:
     """Validate if URL is supported by any plugin or built-in support"""
     if not url or not url.strip():
         return False, "URL cannot be empty"
@@ -404,7 +390,7 @@ def validate_url(url: str) -> Tuple[bool, str]:
         return False, f"Error validating URL: {str(e)}"
 
 
-def check_ffmpeg() -> Tuple[bool, str]:
+def check_ffmpeg() -> tuple[bool, str]:
     """Check if FFmpeg is available on the system"""
     try:
         if shutil.which("ffmpeg"):
@@ -415,13 +401,14 @@ def check_ffmpeg() -> Tuple[bool, str]:
             try:
                 import subprocess
 
-                subprocess.run(
-                    "cmd /c ffmpeg -version",
+                result = subprocess.run(
+                    ["ffmpeg", "-version"],
                     capture_output=True,
                     timeout=2,
-                    shell=True,
+                    check=False,
                 )
-                return True, "FFmpeg found"
+                if result.returncode == 0:
+                    return True, "FFmpeg found"
             except Exception:
                 pass
 
@@ -430,10 +417,10 @@ def check_ffmpeg() -> Tuple[bool, str]:
         return False, f"Error checking FFmpeg: {str(e)}"
 
 
-def check_output_dir(output_dir: str) -> Tuple[bool, str]:
+def check_output_dir(output_dir: str) -> tuple[bool, str]:
     """Check if output directory exists or can be created"""
     try:
-        output_path = Path(output_dir)
+        output_path = Path(output_dir).expanduser()
         output_path.mkdir(parents=True, exist_ok=True)
         return True, "Output directory ready"
     except PermissionError:
@@ -442,7 +429,7 @@ def check_output_dir(output_dir: str) -> Tuple[bool, str]:
         return False, f"Cannot create output directory: {str(e)}"
 
 
-def load_config(config_file: Optional[str] = None) -> Config:
+def load_config(config_file: str | None = None) -> Config:
     """Load configuration from file or return defaults"""
     if config_file and Path(config_file).exists():
         try:
@@ -460,7 +447,7 @@ def load_config(config_file: Optional[str] = None) -> Config:
     return Config()
 
 
-def list_supported_platforms() -> Dict[str, Dict[str, Any]]:
+def list_supported_platforms() -> dict[str, dict[str, Any]]:
     """List all supported platforms from plugins"""
     if not PLUGINS_AVAILABLE:
         return {}
@@ -480,7 +467,7 @@ def list_supported_platforms() -> Dict[str, Dict[str, Any]]:
         return {}
 
 
-def get_converter_for_url(url: str) -> Optional[Tuple[str, BaseConverter]]:
+def get_converter_for_url(url: str) -> tuple[str, BaseConverter] | None:
     """Get the converter for a given URL"""
     if not PLUGINS_AVAILABLE:
         return None
@@ -498,14 +485,14 @@ class DownloadProgress:
     def __init__(
         self,
         quiet: bool = False,
-        progress_callback: Optional[Callable[[str], None]] = None,
-        cancel_event: Optional[Any] = None,
+        progress_callback: Callable[[str], None] | None = None,
+        cancel_event: Any | None = None,
     ):
         self.quiet = quiet
         self.progress_callback = progress_callback
         self.cancel_event = cancel_event
 
-    def hook(self, d: Dict[str, Any]) -> None:
+    def hook(self, d: dict[str, Any]) -> None:
         """Progress hook for yt-dlp"""
         if self.cancel_event and self.cancel_event.is_set():
             raise DownloadError("Download cancelled by user")
@@ -530,7 +517,8 @@ def dry_run_info(
     audio_format: str = "mp3",
     quality: str = "medium",
     is_playlist: bool = False,
-) -> Optional[Dict[str, Any]]:
+    **kwargs,
+) -> dict[str, Any] | None:
     """
     Extract metadata without downloading (dry run / preview)
 
@@ -546,95 +534,71 @@ def dry_run_info(
         Dictionary with metadata or None on failure
     """
     try:
-        # Try plugin system first
-        if PLUGINS_AVAILABLE:
-            registry = get_global_registry()
-            result = registry.find_plugin_for_url(url)
-            if result:
-                plugin_id, converter = result
-                try:
-                    info = converter.get_info(url, is_playlist=is_playlist)
-                    
-                    # Add output path information
-                    info["output_dir"] = output_dir
-                    info["format"] = audio_format
-                    info["quality"] = quality
-                    info["template"] = filename_template
-                    
-                    # Generate resolved paths for preview
-                    if "videos" in info:
-                        for video in info.get("videos", []):
-                            title = sanitize_filename(video.get("title", "untitled"))
-                            resolved_name = filename_template.replace("%(title)s", title).replace("%(ext)s", audio_format)
-                            video["resolved_path"] = f"{output_dir}/{resolved_name}"
-                    
-                    return info
-                except Exception as e:
-                    console.print(f"[yellow]Plugin error: {e}[/yellow]")
-                    return None
+        converter = get_converter_for_url(url)
+        if converter:
+            _, plugin = converter
+            info = plugin.get_info(url, is_playlist=is_playlist, **kwargs)
+        else:
+            from plugins.yt_dlp_converter import network_options
 
-        # Fallback: use yt-dlp directly
-        import yt_dlp
-        
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'extract_flat': 'in_playlist' if is_playlist else False,
-            'noplaylist': not is_playlist,
-        }
-        
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=False)
-            
-            if not info_dict:
-                return None
-            
-            # Check if it's a playlist
-            is_playlist_result = 'entries' in info_dict
-            
-            result = {
+            with yt_dlp.YoutubeDL(
+                {
+                    "quiet": True,
+                    "no_warnings": True,
+                    "extract_flat": "in_playlist" if is_playlist else False,
+                    "noplaylist": not is_playlist,
+                    **network_options(kwargs),
+                }
+            ) as ydl:
+                info = ydl.extract_info(url, download=False)
+        if not info:
+            return None
+
+        playlist = "entries" in info or info.get("is_playlist", False)
+        entries = (
+            [entry for entry in info.get("entries") or [] if entry]
+            if playlist
+            else [info]
+        )
+        result = dict(info)
+        result.update(
+            {
                 "url": url,
                 "output_dir": output_dir,
                 "format": audio_format,
                 "quality": quality,
                 "template": filename_template,
-                "is_playlist": is_playlist_result,
+                "is_playlist": playlist,
+                "video_count": len(entries),
+                "videos": [],
             }
-            
-            if is_playlist_result:
-                entries = list(info_dict.get('entries', []))
-                result["playlist_title"] = info_dict.get('title', 'Unknown Playlist')
-                result["video_count"] = len(entries)
-                result["videos"] = []
-                
-                for entry in entries[:10]:  # Limit preview to first 10
-                    if entry:
-                        title = sanitize_filename(entry.get('title', 'untitled'))
-                        resolved_name = filename_template.replace("%(title)s", title).replace("%(ext)s", audio_format)
-                        result["videos"].append({
-                            "title": entry.get('title', 'Unknown'),
-                            "duration": entry.get('duration'),
-                            "url": entry.get('webpage_url') or entry.get('url'),
-                            "resolved_path": f"{output_dir}/{resolved_name}",
-                        })
-            else:
-                # Single video
-                title = sanitize_filename(info_dict.get('title', 'untitled'))
-                resolved_name = filename_template.replace("%(title)s", title).replace("%(ext)s", audio_format)
-                
-                result["video_count"] = 1
-                result["videos"] = [{
-                    "title": info_dict.get('title', 'Unknown'),
-                    "duration": info_dict.get('duration'),
-                    "uploader": info_dict.get('uploader'),
-                    "url": url,
-                    "resolved_path": f"{output_dir}/{resolved_name}",
-                }]
-            
-            return result
-            
-    except Exception as e:
-        console.print(f"[red]Error extracting info: {e}[/red]")
+        )
+        if playlist:
+            result["playlist_title"] = info.get("title", "Unknown Playlist")
+        # Let yt-dlp resolve all template fields (artist, id, playlist index, etc.).
+        with yt_dlp.YoutubeDL(
+            {
+                "quiet": True,
+                "outtmpl": str(Path(output_dir).expanduser() / filename_template),
+            }
+        ) as ydl:
+            for index, entry in enumerate(entries[:10], 1):
+                metadata = dict(entry)
+                metadata["ext"] = "ogg" if audio_format == "vorbis" else audio_format
+                if playlist:
+                    metadata.setdefault("playlist_index", index)
+                result["videos"].append(
+                    {
+                        "title": entry.get("title", "Unknown"),
+                        "duration": entry.get("duration"),
+                        "uploader": entry.get("uploader"),
+                        "url": entry.get("webpage_url") or entry.get("url") or url,
+                        "resolved_path": ydl.prepare_filename(metadata),
+                    }
+                )
+        return result
+    except Exception as exc:
+        console.print(f"[red]Error extracting info: {exc}[/red]")
         return None
 
 
@@ -660,6 +624,24 @@ def download_audio(
     Returns:
         DownloadResult with download status
     """
+    url = url.strip()
+    output_dir = str(Path(output_dir).expanduser())
+    if quality not in QUALITY_PRESETS or audio_format not in SUPPORTED_FORMATS:
+        return DownloadResult(
+            success=False,
+            url=url,
+            error_code=ErrorCode.CONFIGURATION_ERROR,
+            error_message=f"Unsupported quality or format: {quality}, {audio_format}",
+        )
+    cancel_event = kwargs.get("cancel_event")
+    if cancel_event and cancel_event.is_set():
+        return DownloadResult(
+            success=False,
+            url=url,
+            error_code=ErrorCode.CANCELLED,
+            error_message="Download cancelled by user",
+            attempts=0,
+        )
     # Validate inputs
     valid, msg = validate_url(url)
     if not valid:
@@ -702,7 +684,7 @@ def download_audio(
     else:
         max_retries = 0
 
-    def progress_adapter(payload: Dict[str, Any]) -> None:
+    def progress_adapter(payload: dict[str, Any]) -> None:
         if cancel_event and cancel_event.is_set():
             raise DownloadError("Download cancelled by user")
         if progress_callback:
@@ -747,8 +729,11 @@ def download_audio(
                         return DownloadResult(
                             success=True,
                             url=url,
-                            title=audio_format,
+                            title=Path(file_path).stem if file_path else url,
                             output_path=file_path,
+                            file_size=Path(file_path).stat().st_size
+                            if file_path and Path(file_path).is_file()
+                            else 0,
                             attempts=attempts,
                             duration_seconds=time.monotonic() - start_time,
                         )
@@ -760,7 +745,7 @@ def download_audio(
                         return DownloadResult(
                             success=True,
                             url=url,
-                            title=audio_format,
+                            title=Path(file_path).stem if file_path else url,
                             output_path=file_path,
                             error_code=ErrorCode.SUCCESS,
                             error_message=error_message,
@@ -779,9 +764,7 @@ def download_audio(
                             duration_seconds=time.monotonic() - start_time,
                         )
 
-                    should_retry = (
-                        attempts <= max_retries and _is_retryable(error_code)
-                    )
+                    should_retry = attempts <= max_retries and _is_retryable(error_code)
                     if not should_retry:
                         return DownloadResult(
                             success=False,
@@ -792,8 +775,13 @@ def download_audio(
                             duration_seconds=time.monotonic() - start_time,
                         )
 
-                    delay = min(float(retry_delay) * (retry_backoff ** (attempts - 1)), 10.0)
-                    time.sleep(delay)
+                    delay = min(
+                        float(retry_delay) * (retry_backoff ** (attempts - 1)), 10.0
+                    )
+                    if cancel_event:
+                        cancel_event.wait(delay)
+                    else:
+                        time.sleep(delay)
         except Exception as e:
             return DownloadResult(
                 success=False,
@@ -811,99 +799,161 @@ def download_audio(
     )
 
 
-def main() -> int:
-    """Main CLI entry point"""
+def main(argv: list[str] | None = None) -> int:
+    """Run the CLI, honoring configuration defaults and explicit overrides."""
     parser = argparse.ArgumentParser(
         description="TubeTracks: Multi-platform media downloader"
     )
+    parser.add_argument("url", nargs="?", help="URL to download")
     parser.add_argument(
-        "url",
-        nargs="?",
-        help="URL to download",
+        "-b", "--batch-file", type=Path, help="Read URLs from a UTF-8 text file"
     )
     parser.add_argument(
-        "-q",
-        "--quality",
-        default="medium",
-        choices=list(QUALITY_PRESETS.keys()),
-        help="Quality preset (default: medium)",
+        "-p", "--playlist", action="store_true", help="Download the full playlist"
+    )
+    parser.add_argument("--config", type=Path, help="Configuration file")
+    parser.add_argument("-q", "--quality", choices=list(QUALITY_PRESETS))
+    parser.add_argument("-f", "--format", choices=SUPPORTED_FORMATS)
+    parser.add_argument("-o", "--output", help="Output directory")
+    parser.add_argument("-t", "--template", help="yt-dlp filename template")
+    parser.add_argument("--proxy", help="HTTP or SOCKS proxy URL")
+    parser.add_argument(
+        "--limit-rate", dest="rate_limit", help="Rate limit, e.g. 500K or 1M"
+    )
+    parser.add_argument("--cookies-file", help="Netscape-format cookies file")
+    parser.add_argument("--retries", type=int, help="Number of retries after a failure")
+    parser.add_argument("--concurrent-downloads", type=int, choices=range(1, 6))
+    parser.add_argument("--archive-file", help="Download archive path")
+    for name in ("embed-metadata", "embed-thumbnail", "use-archive"):
+        parser.add_argument(
+            f"--{name}", action=argparse.BooleanOptionalAction, default=None
+        )
+    parser.add_argument("--quiet", action="store_true", help="Suppress download output")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Preview without downloading"
     )
     parser.add_argument(
-        "-f",
-        "--format",
-        default="mp3",
-        choices=SUPPORTED_FORMATS,
-        help="Output format (default: mp3)",
+        "--save-config", action="store_true", help="Save current settings"
     )
     parser.add_argument(
-        "-o",
-        "--output",
-        default="./downloads",
-        help="Output directory (default: ./downloads)",
+        "--show-config", action="store_true", help="Display current configuration"
     )
     parser.add_argument(
-        "--version",
-        action="version",
-        version=f"%(prog)s {__version__}",
+        "--list-plugins", action="store_true", help="List available plugins"
     )
     parser.add_argument(
-        "--show-config",
-        action="store_true",
-        help="Display current configuration",
+        "--version", action="version", version=f"%(prog)s {__version__}"
     )
-    parser.add_argument(
-        "--list-plugins",
-        action="store_true",
-        help="List available plugins",
-    )
+    args = parser.parse_args(argv)
+    config = load_config(str(args.config) if args.config else None)
+    for field in (
+        "quality",
+        "format",
+        "output",
+        "template",
+        "proxy",
+        "rate_limit",
+        "cookies_file",
+        "retries",
+        "concurrent_downloads",
+        "archive_file",
+        "embed_metadata",
+        "embed_thumbnail",
+        "use_archive",
+    ):
+        value = getattr(args, field)
+        if value is not None:
+            setattr(config, field, value)
+    config.quiet = args.quiet
+    config.dry_run = args.dry_run
+    if config.retries < 0 or not 1 <= config.concurrent_downloads <= 5:
+        parser.error(
+            "retries must be nonnegative and concurrent downloads must be between 1 and 5"
+        )
 
-    args = parser.parse_args()
-
+    if args.save_config:
+        try:
+            config.save_to_file(args.config or DEFAULT_CONFIG_FILE)
+        except OSError as exc:
+            console.print(f"Error saving configuration: {exc}")
+            return 2
+        return 0
     if args.show_config:
-        config = load_config()
-        console.print(f"[bold]Configuration:[/bold]")
+        console.print("[bold]Configuration:[/bold]")
         console.print(f"  Quality: {config.quality}")
         console.print(f"  Format: {config.format}")
         console.print(f"  Output: {config.output}")
         console.print(f"  Retries: {config.retries}")
         return 0
-
     if args.list_plugins:
-        if PLUGINS_AVAILABLE:
-            registry = get_global_registry()
-            plugins = registry.list_plugins()
-            console.print(f"[bold]Total Plugins: {len(plugins)}[/bold]")
-            console.print("")
-            for plugin_id, caps in plugins.items():
-                console.print(f"  • {caps.platform}: {caps.description}")
-        else:
-            console.print("[yellow]Plugin system not available[/yellow]")
+        platforms = list_supported_platforms()
+        console.print(f"[bold]Total Plugins: {len(platforms)}[/bold]")
+        for caps in platforms.values():
+            console.print(f"  {caps['platform']}: {caps['description']}")
         return 0
 
-    if not args.url:
+    urls = [args.url] if args.url else []
+    if args.batch_file:
+        try:
+            urls.extend(
+                line.strip()
+                for line in args.batch_file.read_text(encoding="utf-8-sig").splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            )
+        except (OSError, UnicodeError) as exc:
+            console.print(f"Error reading batch file: {exc}")
+            return 2
+    if not urls:
         parser.print_help()
         return 2
+    for url in urls:
+        valid, message = validate_url(url)
+        if not valid:
+            console.print(f"Error: {message}", markup=False)
+            return 2
 
-    # Validate URL
-    valid, msg = validate_url(args.url)
-    if not valid:
-        console.print(f"[red]Error: {msg}[/red]")
-        return 2
+    options = dict(
+        output_dir=config.output,
+        quality=config.quality,
+        audio_format=config.format,
+        filename_template=config.template,
+        is_playlist=args.playlist,
+        proxy=config.proxy,
+        rate_limit=config.rate_limit,
+        cookies_file=config.cookies_file,
+    )
+    if args.dry_run:
+        success = True
+        for url in urls:
+            info = dry_run_info(url, **options)
+            if info is None:
+                success = False
+            else:
+                console.print(
+                    json.dumps(info["videos"], ensure_ascii=False, indent=2),
+                    markup=False,
+                )
+        return 0 if success else 1
 
-    # Perform download
-    result = download_audio(
-        args.url,
-        output_dir=args.output,
-        quality=args.quality,
-        audio_format=args.format,
+    options.update(
+        quiet=config.quiet,
+        max_retries=config.retries,
+        embed_metadata=config.embed_metadata,
+        embed_thumbnail=config.embed_thumbnail,
+        archive_file=(config.archive_file or str(DEFAULT_ARCHIVE_FILE))
+        if config.use_archive
+        else None,
     )
 
-    if result.success:
-        console.print(f"[green]{result}[/green]")
-        return 0
-    else:
-        console.print(f"[red]{result}[/red]")
-        return 1
+    def download(url):
+        return download_audio(url, **options)
+
+    with ThreadPoolExecutor(max_workers=config.concurrent_downloads) as executor:
+        results = list(executor.map(download, urls))
+    if not config.quiet:
+        for result in results:
+            console.print(str(result), markup=False)
+    return 0 if all(result.success for result in results) else 1
 
 
 if __name__ == "__main__":
