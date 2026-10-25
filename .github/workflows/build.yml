@@ -66,9 +66,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg xvfb python3-tk
-      - name: Install FFmpeg (macOS)
+      - name: Install full FFmpeg build (macOS)
         if: runner.os == 'macOS'
-        run: command -v ffmpeg || brew install ffmpeg
+        run: |
+          brew install ffmpeg-full
+          echo "$(brew --prefix ffmpeg-full)/bin" >> "$GITHUB_PATH"
       - name: Install FFmpeg (Windows)
         if: runner.os == 'Windows'
         run: choco install ffmpeg --yes --no-progress
@@ -78,6 +80,18 @@ jobs:
           ffprobe -version
           python -c "import tkinter; print(tkinter.TkVersion)"
           python -m pip check
+      - name: Verify required FFmpeg encoders
+        shell: python
+        run: |
+          import subprocess
+
+          output = subprocess.check_output(["ffmpeg", "-hide_banner", "-encoders"], text=True)
+          available = {line.split()[1] for line in output.splitlines() if len(line.split()) >= 2}
+          required = {"libmp3lame", "aac", "flac", "pcm_s16le", "libvorbis", "libopus", "mpeg4"}
+          missing = required - available
+          if missing:
+              raise SystemExit("FFmpeg is missing required encoders: " + ", ".join(sorted(missing)))
+          print("All required FFmpeg encoders are available")
       - name: Run full suite with a virtual display (Linux)
         if: runner.os == 'Linux'
         run: xvfb-run -a python -m pytest --cov --cov-report=xml --cov-report=term-missing

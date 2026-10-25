@@ -118,11 +118,19 @@ python -m pip install .
 | Platform | Example command |
 |----------|-----------------|
 | Windows | `winget install Gyan.FFmpeg` |
-| macOS | `brew install ffmpeg` |
+| macOS | `brew install ffmpeg-full` |
 | Debian/Ubuntu | `sudo apt update && sudo apt install ffmpeg` |
 | Fedora | `sudo dnf install ffmpeg` |
 | Arch Linux | `sudo pacman -S ffmpeg` |
 
+On macOS, use `ffmpeg-full` to include the `libvorbis` encoder needed for Ogg/Vorbis
+conversion. The formula is keg-only, so add its executables to your shell's `PATH`:
+
+```bash
+export PATH="$(brew --prefix ffmpeg-full)/bin:$PATH"
+```
+
+Add that line to your shell profile to retain it in new terminals.
 On Debian/Ubuntu, install `python3-tk` if Tkinter is unavailable.
 
 ### Set up YouTube JavaScript support
