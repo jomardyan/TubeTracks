@@ -371,3 +371,8 @@ The developers assume no liability for misuse of this software.
 [Maintenance audit and validation notes](docs/AUDIT-2026-11-04.md) documents the reviewed scope, development commands, checks and remaining limits.
 
 `make dev` aliases the existing test watcher (`pytest-watch` is optional); `make package` aliases `make build` and creates local wheel/source archives under `dist/`. Publishing remains a separate command.
+
+## Copyright
+
+Copyright (c) 2026 Hayk Jomardyan - Lolisoft.
+See COPYRIGHT.md for attribution and existing license notices.
