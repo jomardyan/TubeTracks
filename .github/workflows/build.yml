@@ -64,8 +64,10 @@ jobs:
       - name: Install FFmpeg and virtual display (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg xvfb python3-tk
+          # Keep required binaries and their dependencies; optional recommendations
+          # include large speech-model/desktop downloads unrelated to these tests.
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y --no-install-recommends ffmpeg xvfb xauth python3-tk
       - name: Install full FFmpeg build (macOS)
         if: runner.os == 'macOS'
         run: |
