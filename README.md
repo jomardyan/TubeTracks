@@ -367,3 +367,5 @@ This project is licensed under the **GNU General Public License v3.0 or later**
 TubeTracks is provided for educational and personal use. Users are responsible
 for complying with applicable copyright laws, platform terms, and local regulations.
 The developers assume no liability for misuse of this software.
+
+[Maintenance audit and validation notes](docs/AUDIT-2026-11-04.md) documents the reviewed scope, development commands, checks and remaining limits.
