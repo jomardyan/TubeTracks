@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test smoke-test lint format clean build publish run dry-run show-config version pipx-install pipx-uninstall check coverage pre-commit security validate watch list-plugins plugin-docs batch gui gui-test
+.PHONY: help package dev install install-dev test smoke-test lint format clean build publish run dry-run show-config version pipx-install pipx-uninstall check coverage pre-commit security validate watch list-plugins plugin-docs batch gui gui-test
 
 # Color codes for output
 BLUE := \033[0;34m
@@ -32,6 +32,8 @@ help:
 	@echo "$(GREEN)Build & Distribution:$(NC)"
 	@echo "  make clean           Remove build artifacts and cache"
 	@echo "  make build           Build distribution packages"
+	@echo "  make package         Build local wheel and source archives"
+	@echo "  make dev             Watch tests during development"
 	@echo "  make publish         Publish to PyPI"
 	@echo ""
 	@echo "$(GREEN)Download Operations:$(NC)"
@@ -255,3 +257,6 @@ gui-test:
 	@python -c "import tubetracks_gui; print('✓ GUI module loads successfully')" || (echo "$(RED)✗ GUI module failed to load$(NC)" && exit 1)
 	@echo "$(GREEN)✓ GUI dependencies satisfied$(NC)"
 
+package: build
+
+dev: watch
