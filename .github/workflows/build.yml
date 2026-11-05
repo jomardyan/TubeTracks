@@ -26,14 +26,17 @@ jobs:
           python-version: '3.14'
           cache: pip
           cache-dependency-path: pyproject.toml
+      - name: Verify GNU Make command discovery and recipe graph
+        run: |
+          make help
+          make -n build package clean
       - name: Install development dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e '.[dev]'
       - name: Check style and imports
         run: |
-          python -m ruff check .
-          python -m ruff format --check .
+          make lint PYTHON=python
       - name: Audit dependencies
         run: python -m pip_audit --local --progress-spinner off
       - name: Check source for security issues
